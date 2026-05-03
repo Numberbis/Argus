@@ -13,7 +13,12 @@
     nav .brand .eye { color: #4fc3f7; }
     nav a { color: #d0d7e2; text-decoration: none; margin-right: 1.5em; font-size: 0.95em; }
     nav a:hover, nav a.active { color: white; }
-    nav .ai-tag { margin-left: auto; background: #4fc3f7; color: #1a1f2e; font-weight: 700;
+    nav .spacer { margin-left: auto; }
+    nav .budget { color: #d0d7e2; font-size: 0.85em; margin-right: 1.2em; }
+    nav .budget strong { color: white; }
+    nav .budget.warn strong { color: #fbbf24; }
+    nav .budget.danger strong { color: #f87171; }
+    nav .ai-tag { background: #4fc3f7; color: #1a1f2e; font-weight: 700;
                   font-size: 0.7em; padding: 3px 8px; border-radius: 10px; letter-spacing: 0.5px; }
     .container { max-width: 1280px; margin: 2em auto; padding: 0 1em; }
     h1, h2 { color: #1a1f2e; }
@@ -72,8 +77,38 @@
     <a href="/">Dashboard</a>
     <a href="/real-issues">Real Issues</a>
     {% if agent_available %}<a href="/chat">Chat</a>{% endif %}
-    {% if agent_available %}<span class="ai-tag">AI ON</span>{% else %}<span class="ai-tag" style="background:#94a3b8">AI OFF</span>{% endif %}
+    {% if agent_available %}<a href="/agent">Agent</a>{% endif %}
+    <span class="spacer"></span>
+    {% if agent_available %}
+    <span id="nav-budget" class="budget" title="Coût LLM aujourd'hui (clic pour détail)">
+      <a href="/agent" style="color:inherit;text-decoration:none;">
+        <span id="nav-budget-text">⏳</span>
+      </a>
+    </span>
+    <span class="ai-tag">AI ON</span>
+    {% else %}
+    <span class="ai-tag" style="background:#94a3b8">AI OFF</span>
+    {% endif %}
   </nav>
+  {% if agent_available %}
+  <script>
+    (async () => {
+      try {
+        const r = await fetch('/api/budget');
+        const d = await r.json();
+        const el = document.getElementById('nav-budget');
+        const txt = document.getElementById('nav-budget-text');
+        if (!d || d.error) { txt.textContent = 'agent: ✕'; el.classList.add('danger'); return; }
+        const pct = d.spend_today_usd / d.daily_cap_usd;
+        if (pct >= 1) el.classList.add('danger');
+        else if (pct >= 0.8) el.classList.add('warn');
+        txt.innerHTML = '💰 <strong>$' + d.spend_today_usd.toFixed(4) + '</strong> / $' + d.daily_cap_usd.toFixed(2);
+      } catch (e) {
+        document.getElementById('nav-budget-text').textContent = 'budget: ✕';
+      }
+    })();
+  </script>
+  {% endif %}
   <div class="container">
     {% block content %}{% endblock %}
   </div>

@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+{% block title %}Agent IA — Argus{% endblock %}
+{% block content %}
+<h1>Agent IA</h1>
+<p class="subtitle">État, budget, historique des appels LLM. L'agent enrichit les findings (triage, remédiation) et alimente la page Chat.</p>
+
+{# ── État courant ──────────────────────────────────────────────────────── #}
+<div class="stat-cards">
+  <div class="card {% if budget and budget.remaining_usd > 0 %}ok{% else %}danger{% endif %}">
+    <div class="num">${{ "%.4f"|format(budget.spend_today_usd) if budget else "—" }}</div>
+    <div class="lbl">Dépensé aujourd'hui</div>
+  </div>
+  <div class="card">
+    <div class="num">${{ "%.2f"|format(budget.daily_cap_usd) if budget else "—" }}</div>
+    <div class="lbl">Plafond journalier</div>
+  </div>
+  <div class="card ok">
+    <div class="num">${{ "%.4f"|format(stats.week_cost or 0) }}</div>
+    <div class="lbl">7 derniers jours</div>
+  </div>
+  <div class="card">
+    <div class="num">${{ "%.4f"|format(stats.total_cost or 0) }}</div>
+    <div class="lbl">Total cumulé</div>
+  </div>
+</div>
+
+{# ── Provider & santé ──────────────────────────────────────────────────── #}
+<div class="panel">
+  <div style="display:flex;gap:2em;flex-wrap:wrap;align-items:center;">
+    <div>
+      <div class="lbl muted small">Provider</div>
+      <div><strong>{{ health_status.provider if health_status else "indisponible" }}</strong></div>
+    </div>
+    <div>
+      <div class="lbl muted small">Modèle</div>
+      <div><code>{{ health_status.model if health_status else "—" }}</code></div>
+    </div>
+    <div>
+      <div class="lbl muted small">État</div>
+      <div>
+        {% if health_status %}
+          <span class="badge badge-LOW">healthy</span>
+        {% else %}
+          <span class="badge badge-CRITICAL">unreachable</span>
+        {% endif %}
+      </div>
+    </div>
+    <div>
+      <div class="lbl muted small">Latence triage moyenne</div>
+      <div>{{ "%.0f ms"|format(stats.avg_triage_ms or 0) }}</div>
+    </div>
+    <div>
+      <div class="lbl muted small">Tokens cumulés</div>
+      <div class="small">in: {{ "{:,}".format(stats.total_input_tokens or 0) }} · out: {{ "{:,}".format(stats.total_output_tokens or 0) }}</div>
+    </div>
+    <div style="margin-left:auto;">
+      <a href="{{ agent_url_external }}/metrics" target="_blank">Métriques Prometheus brutes ↗</a>
+      &nbsp;·&nbsp;
+      <a href="{{ agent_url_external }}/budget" target="_blank">Budget JSON ↗</a>
+    </div>
+  </div>
+</div>
+
+{# ── Historique ────────────────────────────────────────────────────────── #}
+<h2>Historique des appels ({{ stats.total_runs or 0 }})</h2>
+
+{% if runs %}
+<table>
+  <thead>
+    <tr>
+      <th>Quand</th>
+      <th>Type</th>
+      <th>Cible</th>
+      <th>Modèle</th>
+      <th>Tokens (in/out)</th>
+      <th>Coût</th>
+      <th>Durée</th>
+      <th>Statut</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for r in runs %}
+    <tr>
+      <td class="small muted">{{ r.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+      <td><code>{{ r.run_type }}</code></td>
+      <td class="small">{{ r.target or '—' }}</td>
+      <td class="small">
+        {{ r.provider }}
+        {% if r.model and r.model != 'simulated' %}<span class="muted">/{{ r.model }}</span>{% endif %}
+      </td>
+      <td class="small">{{ r.input_tokens }} / {{ r.output_tokens }}</td>
+      <td>${{ "%.4f"|format(r.cost_usd) }}</td>
+      <td class="small">{{ r.duration_ms or 0 }} ms</td>
+      <td>
+        {% if r.status == 'success' %}<span class="badge badge-LOW">success</span>
+        {% elif r.status == 'failed' %}<span class="badge badge-CRITICAL" title="{{ r.error or '' }}">failed</span>
+        {% elif r.status == 'budget_exceeded' %}<span class="badge badge-HIGH">budget</span>
+        {% else %}<span class="badge badge-INFO">{{ r.status }}</span>{% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<div class="panel muted">Aucun appel encore. L'historique se remplit dès le premier <code>/triage</code>, <code>/remediate</code> ou <code>/chat</code>.</div>
+{% endif %}
+
+<p class="small muted" style="margin-top:1em;">
+  Les coûts affichés viennent de la table <code>agent_runs</code>, alimentée par le service Agent
+  après chaque appel LLM. Le plafond journalier s'applique côté Agent : tout appel au-dessus
+  reçoit un <code>HTTP 429</code> et n'est pas exécuté.
+</p>
+{% endblock %}

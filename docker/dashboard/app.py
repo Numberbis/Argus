@@ -257,6 +257,76 @@ def api_remediate(finding_id: int):
         return jsonify({"error": str(e)}), 500
 
 
+@app.route("/agent")
+@login_required
+def agent_page():
+    """Page de statut de l'agent IA : budget, runs récents, métriques."""
+    if not AGENT_AVAILABLE:
+        return render_template("chat_disabled.html")
+
+    budget = None
+    health_status = None
+    try:
+        with httpx.Client(timeout=5) as client:
+            r = client.get(f"{AGENT_URL}/budget")
+            if r.status_code == 200:
+                budget = r.json()
+            r = client.get(f"{AGENT_URL}/health")
+            if r.status_code == 200:
+                health_status = r.json()
+    except Exception as e:
+        log.warning("Agent unreachable: %s", e)
+
+    runs = query(
+        """SELECT run_type, target, provider, model,
+                  input_tokens, output_tokens, cost_usd, duration_ms,
+                  status, error, created_at
+           FROM agent_runs
+           ORDER BY created_at DESC
+           LIMIT 50"""
+    )
+    stats = query(
+        """SELECT
+             COUNT(*)                                            AS total_runs,
+             COUNT(*) FILTER (WHERE status='success')            AS success_count,
+             COUNT(*) FILTER (WHERE status='failed')             AS failed_count,
+             COUNT(*) FILTER (WHERE status='budget_exceeded')    AS budget_count,
+             COALESCE(SUM(cost_usd) FILTER (
+                 WHERE created_at >= CURRENT_DATE), 0)           AS today_cost,
+             COALESCE(SUM(cost_usd) FILTER (
+                 WHERE created_at >= CURRENT_DATE - INTERVAL '7 days'), 0) AS week_cost,
+             COALESCE(SUM(cost_usd), 0)                          AS total_cost,
+             COALESCE(AVG(duration_ms) FILTER (
+                 WHERE status='success' AND run_type='triage'), 0) AS avg_triage_ms,
+             COALESCE(SUM(input_tokens), 0)                      AS total_input_tokens,
+             COALESCE(SUM(output_tokens), 0)                     AS total_output_tokens
+           FROM agent_runs"""
+    )
+    return render_template(
+        "agent.html",
+        budget=budget,
+        health_status=health_status,
+        runs=runs,
+        stats=stats[0] if stats else {},
+        agent_url_external=AGENT_URL,
+    )
+
+
+@app.route("/api/budget")
+@login_required
+def api_budget():
+    """Proxy /budget de l'agent — utilisé par le widget de la nav."""
+    if not AGENT_AVAILABLE:
+        return jsonify({"error": "agent disabled"}), 503
+    try:
+        with httpx.Client(timeout=3) as client:
+            r = client.get(f"{AGENT_URL}/budget")
+            r.raise_for_status()
+            return jsonify(r.json())
+    except Exception as e:
+        return jsonify({"error": str(e)}), 503
+
+
 @app.route("/health")
 def health():
     return {"status": "ok", "agent": AGENT_AVAILABLE}
