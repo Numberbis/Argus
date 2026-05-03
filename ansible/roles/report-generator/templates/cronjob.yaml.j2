@@ -1,0 +1,45 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: report-generator
+  namespace: {{ k8s_namespace }}
+spec:
+  schedule: "{{ schedules.reports }}"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 7
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      template:
+        spec:
+          restartPolicy: OnFailure
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+          containers:
+            - name: report-generator
+              image: ghcr.io/{{ registry_org }}/audit-report-generator:{{ image_tag }}
+              imagePullPolicy: Always
+              envFrom:
+                - secretRef:
+                    name: audit-secrets
+              env:
+                - name: REPORT_OUTPUT_DIR
+                  value: /reports
+              resources:
+                requests:
+                  cpu: "200m"
+                  memory: "256Mi"
+                limits:
+                  cpu: "500m"
+                  memory: "512Mi"
+              volumeMounts:
+                - name: reports
+                  mountPath: /reports
+              securityContext:
+                allowPrivilegeEscalation: false
+          volumes:
+            - name: reports
+              persistentVolumeClaim:
+                claimName: reports-pvc

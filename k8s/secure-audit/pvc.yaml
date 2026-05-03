@@ -1,0 +1,15 @@
+---
+# Volume persistant pour stocker users.json entre les redémarrages du pod.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: secure-audit-data
+  namespace: audit
+  labels:
+    app: secure-audit
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 64Mi

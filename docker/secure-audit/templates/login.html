@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Connexion — Secure Audit</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --navy:    #0d1117;
+      --navy2:   #161b22;
+      --navy3:   #21262d;
+      --border:  #30363d;
+      --accent:  #58a6ff;
+      --accent2: #3fb950;
+      --red:     #f85149;
+      --text:    #e6edf3;
+      --muted:   #8b949e;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--navy);
+      min-height: 100vh;
+      display: grid;
+      grid-template-columns: 1fr 480px;
+      overflow: hidden;
+    }
+
+    /* ── Panneau gauche ─────────────────────────────────── */
+    .panel-left {
+      position: relative;
+      background: var(--navy2);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding: 60px;
+      overflow: hidden;
+    }
+
+    .panel-left::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(ellipse 60% 50% at 20% 30%, rgba(88,166,255,.10) 0%, transparent 70%),
+        radial-gradient(ellipse 50% 40% at 80% 70%, rgba(63,185,80,.08) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    /* Grille de points en fond */
+    .panel-left::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background-image:
+        radial-gradient(circle, rgba(255,255,255,.06) 1px, transparent 1px);
+      background-size: 32px 32px;
+      pointer-events: none;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 60px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .brand-icon {
+      width: 48px; height: 48px;
+      background: linear-gradient(135deg, var(--accent), #1f6feb);
+      border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 22px;
+      box-shadow: 0 0 0 1px rgba(88,166,255,.4), 0 8px 24px rgba(88,166,255,.2);
+    }
+
+    .brand-name {
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: var(--text);
+      letter-spacing: -.2px;
+    }
+    .brand-name span { color: var(--accent); }
+
+    .hero-title {
+      font-size: 2.6rem;
+      font-weight: 700;
+      color: var(--text);
+      line-height: 1.2;
+      letter-spacing: -.5px;
+      margin-bottom: 1.2rem;
+      position: relative;
+      z-index: 1;
+    }
+    .hero-title em {
+      font-style: normal;
+      background: linear-gradient(90deg, var(--accent), var(--accent2));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .hero-desc {
+      font-size: .95rem;
+      color: var(--muted);
+      line-height: 1.7;
+      max-width: 420px;
+      margin-bottom: 2.5rem;
+      position: relative;
+      z-index: 1;
+    }
+
+    .feature-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      position: relative;
+      z-index: 1;
+    }
+    .feature-list li {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: .88rem;
+      color: var(--muted);
+    }
+    .feature-list .dot {
+      width: 28px; height: 28px;
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 13px;
+      flex-shrink: 0;
+    }
+    .dot-blue  { background: rgba(88,166,255,.15); color: var(--accent); }
+    .dot-green { background: rgba(63,185,80,.15);  color: var(--accent2); }
+    .dot-orange{ background: rgba(210,153,34,.15); color: #d4a017; }
+    .dot-red   { background: rgba(248,81,73,.15);  color: var(--red); }
+
+    /* ── Panneau droit ──────────────────────────────────── */
+    .panel-right {
+      background: var(--navy);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding: 48px 56px;
+      position: relative;
+    }
+
+    .form-header {
+      margin-bottom: 1.2rem;
+    }
+    .form-header h2 {
+      font-size: 1.55rem;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: .4rem;
+    }
+    .form-header p {
+      font-size: .88rem;
+      color: var(--muted);
+    }
+
+    .form-group { margin-bottom: 1.2rem; }
+
+    label {
+      display: block;
+      font-size: .82rem;
+      font-weight: 500;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .6px;
+      margin-bottom: 7px;
+    }
+
+    input[type="text"],
+    input[type="password"] {
+      width: 100%;
+      background: var(--navy2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 11px 14px;
+      color: var(--text);
+      font-family: inherit;
+      font-size: .95rem;
+      outline: none;
+      transition: border-color .15s, box-shadow .15s;
+    }
+    input:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(88,166,255,.15);
+    }
+    input::placeholder { color: #484f58; }
+
+    .input-wrapper {
+      position: relative;
+    }
+    .input-icon {
+      position: absolute;
+      right: 13px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: #484f58;
+      font-size: 14px;
+      cursor: pointer;
+      user-select: none;
+    }
+    input[type="password"] { padding-right: 40px; }
+
+    .error-box {
+      background: rgba(248,81,73,.1);
+      border: 1px solid rgba(248,81,73,.3);
+      border-radius: 8px;
+      padding: 10px 14px;
+      color: var(--red);
+      font-size: .85rem;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 1.2rem;
+    }
+
+    .btn-submit {
+      width: 100%;
+      padding: 12px;
+      background: linear-gradient(135deg, #1f6feb, var(--accent));
+      border: none;
+      border-radius: 8px;
+      color: #fff;
+      font-family: inherit;
+      font-size: .95rem;
+      font-weight: 600;
+      cursor: pointer;
+      letter-spacing: .2px;
+      transition: opacity .15s, transform .1s;
+      margin-top: .4rem;
+      position: relative;
+      overflow: hidden;
+    }
+    .btn-submit::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: rgba(255,255,255,0);
+      transition: background .15s;
+    }
+    .btn-submit:hover::after  { background: rgba(255,255,255,.07); }
+    .btn-submit:active        { transform: scale(.98); }
+
+    .divider {
+      border: none;
+      border-top: 1px solid var(--border);
+      margin: 1.8rem 0 1.4rem;
+    }
+
+    .footer-info {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: .8rem;
+      color: var(--muted);
+    }
+    .footer-info .fw { font-weight: 600; color: #6e7681; }
+    .footer-info a {
+      color: var(--accent);
+      text-decoration: none;
+    }
+    .footer-info a:hover { text-decoration: underline; }
+
+
+    /* ── Responsive ─────────────────────────────────────── */
+    @media (max-width: 900px) {
+      body { grid-template-columns: 1fr; }
+      .panel-left { display: none; }
+      .panel-right { padding: 40px 32px; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Panneau gauche — présentation -->
+  <div class="panel-left">
+    <div class="brand">
+      <div class="brand-icon">🔒</div>
+      <div class="brand-name">Secure Audit <span>/ Build Web</span></div>
+    </div>
+
+    <h1 class="hero-title">
+      Auditez la sécurité<br>de vos sites web<br><em>en quelques minutes.</em>
+    </h1>
+
+    <p class="hero-desc">
+      Plateforme d'analyse automatisée de sécurité : détection des vulnérabilités,
+      des mauvaises configurations et des bibliothèques obsolètes.
+    </p>
+
+    <ul class="feature-list">
+      <li>
+        <div class="dot dot-blue">🛡</div>
+        En-têtes HTTP de sécurité (CSP, HSTS, X-Frame…)
+      </li>
+      <li>
+        <div class="dot dot-green">🔐</div>
+        Analyse SSL/TLS et validité des certificats
+      </li>
+      <li>
+        <div class="dot dot-orange">📦</div>
+        Bibliothèques JavaScript vulnérables (Retire.js)
+      </li>
+      <li>
+        <div class="dot dot-red">📂</div>
+        Fichiers sensibles exposés (.env, .git, wp-config…)
+      </li>
+      <li>
+        <div class="dot dot-blue">🌐</div>
+        Redirection HTTP → HTTPS et divulgation de version serveur
+      </li>
+      <li>
+        <div class="dot dot-orange">🔍</div>
+        Mozilla Observatory — score et politique de sécurité globale
+      </li>
+    </ul>
+  </div>
+
+  <!-- Panneau droit — formulaire -->
+  <div class="panel-right">
+
+    <div class="form-header">
+      <h2>Connexion</h2>
+      <p>Entrez vos identifiants pour accéder à la plateforme.</p>
+    </div>
+
+    {% if error %}
+    <div class="error-box">
+      <span>⚠</span> {{ error }}
+    </div>
+    {% endif %}
+
+    <form method="POST" action="{{ url_for('login') }}">
+      <div class="form-group">
+        <label for="username">Identifiant</label>
+        <div class="input-wrapper">
+          <input type="text" name="username" id="username"
+                 autocomplete="username" autofocus required
+                 placeholder="votre identifiant">
+          <span class="input-icon">👤</span>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="password">Mot de passe</label>
+        <div class="input-wrapper">
+          <input type="password" name="password" id="password"
+                 autocomplete="current-password" required
+                 placeholder="••••••••">
+          <span class="input-icon" id="toggle-pw" title="Afficher/masquer">👁</span>
+        </div>
+      </div>
+
+      <button type="submit" class="btn-submit">
+        Accéder à la plateforme
+      </button>
+    </form>
+
+    <hr class="divider">
+
+    <div class="footer-info">
+      <span class="fw">Build Web</span>
+      <span>·</span>
+      <a href="mailto:contact@buildweb.fr">contact@buildweb.fr</a>
+      <span>·</span>
+      <span>07 81 55 02 56</span>
+    </div>
+
+  </div>
+
+  <script>
+    // Toggle affichage mot de passe
+    document.getElementById('toggle-pw').addEventListener('click', function () {
+      const pw = document.getElementById('password');
+      const isHidden = pw.type === 'password';
+      pw.type = isHidden ? 'text' : 'password';
+      this.textContent = isHidden ? '🙈' : '👁';
+    });
+  </script>
+
+</body>
+</html>

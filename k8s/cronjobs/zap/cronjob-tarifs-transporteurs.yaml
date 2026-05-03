@@ -1,0 +1,53 @@
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: zap-tarifs-transporteurs
+  namespace: security-audit
+  labels:
+    app: security-audit
+    tool: zap
+    target: tarifs-transporteurs
+spec:
+  schedule: "0 2 * * 1"  # Lundi 02h00
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 5
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      activeDeadlineSeconds: 7200
+      template:
+        spec:
+          restartPolicy: OnFailure
+          serviceAccountName: audit-scanner
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            fsGroup: 1000
+          containers:
+            - name: zap-scanner
+              image: ghcr.io/YOUR_ORG/audit-zap:YOUR_TAG
+              imagePullPolicy: Always
+              env:
+                - name: TARGET_URL
+                  value: "https://tarifs.example.com"
+                - name: TARGET_NAME
+                  value: "tarifs-transporteurs"
+                - name: SCAN_PROFILE
+                  value: "full"
+                - name: COLLECTOR_URL
+                  value: "http://collector:8080"
+              envFrom:
+                - secretRef:
+                    name: audit-secrets
+              resources:
+                requests:
+                  cpu: "500m"
+                  memory: "1Gi"
+                limits:
+                  cpu: "1000m"
+                  memory: "2Gi"
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: false

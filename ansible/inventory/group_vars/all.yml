@@ -1,0 +1,16 @@
+---
+# Variables globales Ansible
+k8s_namespace: security-audit
+registry_org: Numberbis          # Remplacer par votre org GitHub/registry
+image_tag: latest
+
+# Chemins locaux
+project_root: "{{ playbook_dir }}/../.."
+config_dir: "{{ project_root }}/config"
+docker_dir: "{{ project_root }}/docker"
+k8s_dir: "{{ project_root }}/k8s"
+
+# Lecture de la config des sites
+websites: "{{ lookup('file', config_dir + '/websites.yml') | from_yaml | json_query('websites') }}"
+schedules: "{{ lookup('file', config_dir + '/schedules.yml') | from_yaml | json_query('schedules') }}"
+resource_limits: "{{ lookup('file', config_dir + '/schedules.yml') | from_yaml | json_query('resource_limits') }}"

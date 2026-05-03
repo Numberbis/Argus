@@ -1,0 +1,185 @@
+{
+  "__inputs": [],
+  "__requires": [
+    {"type": "grafana", "id": "grafana", "name": "Grafana", "version": "10.0.0"},
+    {"type": "datasource", "id": "prometheus", "name": "Prometheus", "version": "1.0.0"}
+  ],
+  "annotations": {"list": []},
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
+      "fieldConfig": {
+        "defaults": {"color": {"mode": "thresholds"}, "thresholds": {"steps": [
+          {"color": "green", "value": null},
+          {"color": "yellow", "value": 5},
+          {"color": "red", "value": 20}
+        ]}},
+        "overrides": []
+      },
+      "gridPos": {"h": 4, "w": 4, "x": 0, "y": 0},
+      "id": 1,
+      "options": {"reduceOptions": {"calcs": ["lastNotNull"]}, "orientation": "auto", "textMode": "auto", "colorMode": "background"},
+      "title": "Scans totaux",
+      "type": "stat",
+      "targets": [{"expr": "sum(audit_scans_total)", "legendFormat": "Scans", "refId": "A"}]
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
+      "fieldConfig": {
+        "defaults": {"color": {"mode": "thresholds"}, "thresholds": {"steps": [
+          {"color": "green", "value": null},
+          {"color": "orange", "value": 1},
+          {"color": "red", "value": 10}
+        ]}},
+        "overrides": []
+      },
+      "gridPos": {"h": 4, "w": 4, "x": 4, "y": 0},
+      "id": 2,
+      "options": {"reduceOptions": {"calcs": ["lastNotNull"]}, "colorMode": "background"},
+      "title": "Findings CRITICAL",
+      "type": "stat",
+      "targets": [{"expr": "sum(audit_findings_total{severity=\"CRITICAL\"})", "legendFormat": "Critical", "refId": "A"}]
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
+      "fieldConfig": {
+        "defaults": {"color": {"mode": "thresholds"}, "thresholds": {"steps": [
+          {"color": "green", "value": null},
+          {"color": "orange", "value": 5},
+          {"color": "red", "value": 50}
+        ]}},
+        "overrides": []
+      },
+      "gridPos": {"h": 4, "w": 4, "x": 8, "y": 0},
+      "id": 3,
+      "options": {"reduceOptions": {"calcs": ["lastNotNull"]}, "colorMode": "background"},
+      "title": "Findings HIGH",
+      "type": "stat",
+      "targets": [{"expr": "sum(audit_findings_total{severity=\"HIGH\"})", "legendFormat": "High", "refId": "A"}]
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
+      "fieldConfig": {
+        "defaults": {"color": {"mode": "palette-classic"}},
+        "overrides": []
+      },
+      "gridPos": {"h": 4, "w": 4, "x": 12, "y": 0},
+      "id": 4,
+      "options": {"reduceOptions": {"calcs": ["lastNotNull"]}, "colorMode": "value"},
+      "title": "Scans en cours",
+      "type": "stat",
+      "targets": [{"expr": "audit_active_scans", "legendFormat": "Running", "refId": "A"}]
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
+      "fieldConfig": {
+        "defaults": {"color": {"mode": "palette-classic"}, "custom": {"lineWidth": 2, "fillOpacity": 10}},
+        "overrides": []
+      },
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 4},
+      "id": 5,
+      "options": {"tooltip": {"mode": "multi"}, "legend": {"displayMode": "list", "placement": "bottom"}},
+      "title": "Findings par sévérité (taux par minute)",
+      "type": "timeseries",
+      "targets": [
+        {"expr": "sum by (severity) (rate(audit_findings_total[5m]) * 60)", "legendFormat": "{{severity}}", "refId": "A"}
+      ]
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
+      "fieldConfig": {
+        "defaults": {"color": {"mode": "palette-classic"}, "custom": {"lineWidth": 2, "fillOpacity": 10}},
+        "overrides": []
+      },
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 4},
+      "id": 6,
+      "options": {"tooltip": {"mode": "multi"}, "legend": {"displayMode": "list", "placement": "bottom"}},
+      "title": "Scans par outil",
+      "type": "timeseries",
+      "targets": [
+        {"expr": "sum by (tool) (rate(audit_scans_total[10m]) * 60)", "legendFormat": "{{tool}}", "refId": "A"}
+      ]
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
+      "fieldConfig": {
+        "defaults": {"color": {"mode": "palette-classic"}},
+        "overrides": []
+      },
+      "gridPos": {"h": 8, "w": 8, "x": 0, "y": 12},
+      "id": 7,
+      "options": {"pieType": "pie", "tooltip": {"mode": "single"}, "legend": {"displayMode": "list", "placement": "right"}},
+      "title": "Répartition des findings par outil",
+      "type": "piechart",
+      "targets": [
+        {"expr": "sum by (tool) (audit_findings_total)", "legendFormat": "{{tool}}", "refId": "A"}
+      ]
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
+      "fieldConfig": {
+        "defaults": {"color": {"mode": "palette-classic"}},
+        "overrides": []
+      },
+      "gridPos": {"h": 8, "w": 8, "x": 8, "y": 12},
+      "id": 8,
+      "options": {"pieType": "donut", "tooltip": {"mode": "single"}, "legend": {"displayMode": "list", "placement": "right"}},
+      "title": "Répartition par sévérité",
+      "type": "piechart",
+      "targets": [
+        {"expr": "sum by (severity) (audit_findings_total)", "legendFormat": "{{severity}}", "refId": "A"}
+      ]
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "${DS_PROMETHEUS}"},
+      "fieldConfig": {
+        "defaults": {
+          "color": {"mode": "thresholds"},
+          "thresholds": {"steps": [{"color": "green", "value": null}, {"color": "red", "value": 1}]},
+          "custom": {"align": "auto", "displayMode": "color-background"}
+        },
+        "overrides": []
+      },
+      "gridPos": {"h": 8, "w": 8, "x": 16, "y": 12},
+      "id": 9,
+      "options": {"footer": {"show": false}, "showHeader": true},
+      "title": "Top cibles par findings critiques",
+      "type": "table",
+      "targets": [
+        {
+          "expr": "topk(10, sum by (target) (audit_findings_total{severity=\"CRITICAL\"}))",
+          "legendFormat": "{{target}}",
+          "refId": "A",
+          "instant": true
+        }
+      ],
+      "transformations": [{"id": "labelsToFields", "options": {"mode": "columns"}}, {"id": "organize", "options": {}}]
+    }
+  ],
+  "refresh": "1m",
+  "schemaVersion": 38,
+  "tags": ["security", "audit", "argus"],
+  "templating": {"list": [
+    {
+      "current": {},
+      "hide": 0,
+      "includeAll": false,
+      "name": "DS_PROMETHEUS",
+      "options": [],
+      "query": "prometheus",
+      "refresh": 1,
+      "type": "datasource"
+    }
+  ]},
+  "time": {"from": "now-24h", "to": "now"},
+  "timepicker": {},
+  "timezone": "Europe/Paris",
+  "title": "Argus — Security Overview",
+  "uid": "argus-security",
+  "version": 1
+}

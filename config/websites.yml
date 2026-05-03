@@ -1,0 +1,71 @@
+---
+# ─────────────────────────────────────────────────────────────────────────────
+# Argus — sites à auditer (source de vérité unique)
+# ─────────────────────────────────────────────────────────────────────────────
+#
+# Champs obligatoires :
+#   name           identifiant court (a-z, 0-9, tirets), utilisé dans les URLs
+#                  du dashboard et comme TARGET dans les commandes make
+#   url            URL HTTPS (ou HTTP) à scanner
+#   scan_profile   full | light | ssl-only | wordpress
+#
+# Champs optionnels :
+#   group          regroupement pour `make scan-group GROUP=...`
+#   notify_email   destinataire des alertes critiques par mail
+#   slack_channel  canal Slack pour les alertes (commence par #)
+#   internal_ip    pour les sites accessibles uniquement en interne
+#
+# Profils :
+#   full       ZAP + Nikto + Nmap + testssl + Nuclei + Trivy  → apps critiques
+#   light      Nikto + testssl + Nuclei                        → sites vitrines
+#   ssl-only   testssl uniquement                              → monitoring cert
+#   wordpress  WPScan + Nuclei + testssl                       → sites WordPress
+#
+# Après modification :
+#   - Docker Compose : aucune action, le scan suivant utilisera la nouvelle liste
+#   - Kubernetes     : `make update-targets` pour régénérer les CronJobs
+#
+# Vous pouvez aussi éditer cette liste depuis le dashboard sur /sites.
+# ─────────────────────────────────────────────────────────────────────────────
+
+websites:
+  - name: example-blog
+    url: https://blog.example.com
+    group: media
+    scan_profile: full
+    notify_email: security@example.com
+    slack_channel: '#security-alerts'
+
+  - name: example-shop
+    url: https://shop.example.com
+    group: ecommerce
+    scan_profile: full
+    notify_email: security@example.com
+    slack_channel: '#security-alerts'
+
+  - name: example-restaurant
+    url: https://restaurant.example.com
+    group: restaurants
+    scan_profile: light
+    notify_email: admin@example.com
+    slack_channel: '#security-alerts'
+
+  - name: example-wp-site
+    url: https://wp.example.com
+    group: media
+    scan_profile: wordpress
+    notify_email: admin@example.com
+    slack_channel: '#security-alerts'
+
+  - name: example-portfolio
+    url: https://portfolio.example.com
+    group: divers
+    scan_profile: light
+    notify_email: admin@example.com
+
+  - name: example-api
+    url: https://api.example.com
+    group: ecommerce
+    scan_profile: full
+    notify_email: devops@example.com
+    slack_channel: '#security-alerts'

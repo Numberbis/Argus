@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Rapport de sécurité — {{ target }}</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 40px; color: #333; }
+    h1 { color: #c0392b; }
+    .meta { color: #888; font-size: 0.9em; margin-bottom: 2em; }
+    table { width: 100%; border-collapse: collapse; margin-top: 1em; }
+    th { background: #2c3e50; color: white; padding: 8px 12px; text-align: left; }
+    td { padding: 8px 12px; border-bottom: 1px solid #eee; vertical-align: top; }
+    tr:nth-child(even) { background: #f9f9f9; }
+    .CRITICAL { color: #c0392b; font-weight: bold; }
+    .HIGH     { color: #e67e22; font-weight: bold; }
+    .MEDIUM   { color: #f39c12; }
+    .LOW      { color: #27ae60; }
+    .INFO     { color: #7f8c8d; }
+    .badge { padding: 2px 8px; border-radius: 3px; font-size: 0.8em; }
+    .badge-CRITICAL { background: #c0392b; color: white; }
+    .badge-HIGH     { background: #e67e22; color: white; }
+    .badge-MEDIUM   { background: #f39c12; color: white; }
+    .badge-LOW      { background: #27ae60; color: white; }
+    .badge-INFO     { background: #bdc3c7; color: #333; }
+    footer { margin-top: 3em; padding-top: 1em; border-top: 1px solid #ddd; font-size: 0.85em; color: #888; text-align: center; }
+    footer strong { color: #2c3e50; }
+  </style>
+</head>
+<body>
+  <h1>Rapport d'audit de sécurité</h1>
+  <h2>Site : {{ target }}</h2>
+  <p class="meta">Généré le {{ generated_at }} — {{ findings|length }} finding(s) trouvé(s)</p>
+
+  {% set critical_count = findings | selectattr('severity', 'eq', 'CRITICAL') | list | length %}
+  {% set high_count     = findings | selectattr('severity', 'eq', 'HIGH')     | list | length %}
+  {% set medium_count   = findings | selectattr('severity', 'eq', 'MEDIUM')   | list | length %}
+  {% set low_count      = findings | selectattr('severity', 'eq', 'LOW')      | list | length %}
+
+  <table style="width:auto; margin-bottom:2em">
+    <tr><th>Sévérité</th><th>Nombre</th></tr>
+    <tr><td class="CRITICAL">CRITICAL</td><td>{{ critical_count }}</td></tr>
+    <tr><td class="HIGH">HIGH</td><td>{{ high_count }}</td></tr>
+    <tr><td class="MEDIUM">MEDIUM</td><td>{{ medium_count }}</td></tr>
+    <tr><td class="LOW">LOW</td><td>{{ low_count }}</td></tr>
+  </table>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Sévérité</th>
+        <th>Outil</th>
+        <th>Titre</th>
+        <th>URL</th>
+        <th>CVE</th>
+        <th>Remédiation</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for f in findings %}
+      <tr>
+        <td><span class="badge badge-{{ f.severity }}">{{ f.severity }}</span></td>
+        <td>{{ f.tool }}</td>
+        <td>{{ f.title }}</td>
+        <td style="word-break:break-all; font-size:0.85em">{{ f.url or '' }}</td>
+        <td>{{ f.cve_ids | join(', ') if f.cve_ids else '' }}</td>
+        <td style="font-size:0.85em">{{ f.remediation or '' }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <footer>
+    Rapport généré par <strong>Build Web</strong> —
+    <a href="mailto:contact@buildweb.fr">contact@buildweb.fr</a> —
+    07 81 55 02 56
+  </footer>
+</body>
+</html>

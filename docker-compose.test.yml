@@ -1,0 +1,97 @@
+---
+# Docker Compose pour les tests d'intégration
+# Usage :
+#   docker compose -f docker-compose.test.yml up -d
+#   INTEGRATION_TEST_DB_URL=postgresql://audit:test@localhost:5433/audit_test pytest tests/integration/ -v
+#   docker compose -f docker-compose.test.yml down -v
+
+services:
+  postgresql-test:
+    image: postgres:16-alpine
+    container_name: audit-test-db
+    environment:
+      POSTGRES_DB: audit_test
+      POSTGRES_USER: audit
+      POSTGRES_PASSWORD: test
+    ports:
+      - "5433:5432"  # Port différent du PostgreSQL de prod (5432)
+    volumes:
+      - ./k8s/postgresql/configmap-schema.yaml:/tmp/schema-configmap.yaml:ro
+      - audit-test-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U audit -d audit_test"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    tmpfs:
+      - /run
+
+  # Initialisation du schéma SQL
+  db-init:
+    image: postgres:16-alpine
+    container_name: audit-test-init
+    depends_on:
+      postgresql-test:
+        condition: service_healthy
+    environment:
+      PGPASSWORD: test
+    command: >
+      sh -c "
+        psql -h postgresql-test -U audit -d audit_test -c \"
+          CREATE TABLE IF NOT EXISTS scans (
+            id SERIAL PRIMARY KEY,
+            tool VARCHAR(20) NOT NULL,
+            target VARCHAR(100) NOT NULL,
+            target_url TEXT NOT NULL,
+            started_at TIMESTAMPTZ NOT NULL,
+            finished_at TIMESTAMPTZ,
+            status VARCHAR(20) NOT NULL DEFAULT 'running',
+            raw_output JSONB
+          );
+          CREATE TABLE IF NOT EXISTS findings (
+            id SERIAL PRIMARY KEY,
+            scan_id INTEGER NOT NULL REFERENCES scans(id) ON DELETE CASCADE,
+            severity VARCHAR(20) NOT NULL,
+            title TEXT NOT NULL,
+            description TEXT,
+            url TEXT,
+            cvss_score NUMERIC(4,1),
+            cve_ids TEXT[] DEFAULT '{}',
+            remediation TEXT,
+            notified_at TIMESTAMPTZ
+          );
+          CREATE TABLE IF NOT EXISTS reports (
+            id SERIAL PRIMARY KEY,
+            generated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            report_type VARCHAR(20) NOT NULL,
+            target VARCHAR(100),
+            html_path TEXT,
+            pdf_path TEXT
+          );
+        \"
+      "
+
+  # Service collector pour les tests d'intégration
+  collector-test:
+    build:
+      context: ./docker/collector
+      dockerfile: Dockerfile
+    container_name: audit-test-collector
+    depends_on:
+      postgresql-test:
+        condition: service_healthy
+      db-init:
+        condition: service_completed_successfully
+    environment:
+      DB_URL: postgresql://audit:test@postgresql-test:5432/audit_test
+    ports:
+      - "8081:8080"  # Port différent du collector de prod
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  audit-test-data:
+    driver: local

@@ -1,0 +1,36 @@
+---
+- name: Création PersistentVolumeClaim PostgreSQL
+  kubernetes.core.k8s:
+    state: present
+    template: pvc.yaml.j2
+
+- name: Déploiement PostgreSQL
+  kubernetes.core.k8s:
+    state: present
+    template: deployment.yaml.j2
+
+- name: Service PostgreSQL (ClusterIP)
+  kubernetes.core.k8s:
+    state: present
+    template: service.yaml.j2
+
+- name: Attente démarrage PostgreSQL
+  command: >
+    kubectl rollout status deployment/postgresql
+    -n {{ k8s_namespace }} --timeout=120s
+  changed_when: false
+
+- name: Copie schéma SQL dans le pod
+  command: >
+    kubectl cp {{ role_path }}/files/schema.sql
+    {{ k8s_namespace }}/{{ pg_pod.stdout }}:/tmp/schema.sql
+  vars:
+    pg_pod: "{{ lookup('pipe', 'kubectl get pod -n ' + k8s_namespace + ' -l app=postgresql -o jsonpath={.items[0].metadata.name}') }}"
+
+- name: Application du schéma SQL
+  command: >
+    kubectl exec -n {{ k8s_namespace }} {{ pg_pod.stdout }}
+    -- psql -U audit -d audit_db -f /tmp/schema.sql
+  vars:
+    pg_pod: "{{ lookup('pipe', 'kubectl get pod -n ' + k8s_namespace + ' -l app=postgresql -o jsonpath={.items[0].metadata.name}') }}"
+  changed_when: false

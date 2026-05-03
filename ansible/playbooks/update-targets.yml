@@ -1,0 +1,7 @@
+---
+# Recharge uniquement les CronJobs quand websites.yml change
+- name: Update scan targets
+  hosts: localhost
+  gather_facts: false
+  roles:
+    - role: cronjobs

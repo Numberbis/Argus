@@ -1,0 +1,52 @@
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: nuclei-yotalent
+  namespace: security-audit
+  labels:
+    app: security-audit
+    tool: nuclei
+    target: yotalent
+spec:
+  schedule: "0 5 * * 4"  # Jeudi 05h00
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 5
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      activeDeadlineSeconds: 3600
+      template:
+        spec:
+          restartPolicy: OnFailure
+          serviceAccountName: audit-scanner
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+          containers:
+            - name: nuclei-scanner
+              image: ghcr.io/YOUR_ORG/audit-nuclei:YOUR_TAG
+              imagePullPolicy: Always
+              env:
+                - name: TARGET_URL
+                  value: "https://yotalent.example.com"
+                - name: TARGET_NAME
+                  value: "yotalent"
+                - name: COLLECTOR_URL
+                  value: "http://collector:8080"
+              envFrom:
+                - secretRef:
+                    name: audit-secrets
+              resources:
+                requests:
+                  cpu: "200m"
+                  memory: "256Mi"
+                limits:
+                  cpu: "500m"
+                  memory: "512Mi"
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop: ["ALL"]

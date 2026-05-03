@@ -1,0 +1,51 @@
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: nmap-yotalent
+  namespace: security-audit
+  labels:
+    app: security-audit
+    tool: nmap
+    target: yotalent
+spec:
+  schedule: "0 4 * * 3"  # Mercredi 04h00
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 5
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      activeDeadlineSeconds: 900
+      template:
+        spec:
+          restartPolicy: OnFailure
+          serviceAccountName: audit-scanner
+          securityContext:
+            runAsUser: 0
+          containers:
+            - name: nmap-scanner
+              image: ghcr.io/YOUR_ORG/audit-nmap:YOUR_TAG
+              imagePullPolicy: Always
+              env:
+                - name: TARGET_URL
+                  value: "https://yotalent.example.com"
+                - name: TARGET_NAME
+                  value: "yotalent"
+                - name: TARGET_IP
+                  value: ""
+                - name: COLLECTOR_URL
+                  value: "http://collector:8080"
+              envFrom:
+                - secretRef:
+                    name: audit-secrets
+              resources:
+                requests:
+                  cpu: "100m"
+                  memory: "64Mi"
+                limits:
+                  cpu: "200m"
+                  memory: "128Mi"
+              securityContext:
+                capabilities:
+                  add: ["NET_RAW", "NET_ADMIN"]

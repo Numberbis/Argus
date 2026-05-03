@@ -1,0 +1,17 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: secure-audit
+  namespace: audit
+  labels:
+    app: secure-audit
+spec:
+  selector:
+    app: secure-audit
+  ports:
+    - name: http
+      port: 80
+      targetPort: 5000
+      protocol: TCP
+  type: ClusterIP

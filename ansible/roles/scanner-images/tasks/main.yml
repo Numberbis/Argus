@@ -1,0 +1,25 @@
+---
+- name: Build et push des images Docker des scanners
+  loop:
+    - zap
+    - nikto
+    - nmap
+    - testssl
+    - nuclei
+    - collector
+    - report-generator
+    - notifier
+    - dashboard
+  loop_control:
+    loop_var: tool
+  block:
+    - name: Build image {{ tool }}
+      command: >
+        docker build -t ghcr.io/{{ registry_org }}/audit-{{ tool }}:{{ image_tag }}
+        {{ docker_dir }}/{{ tool }}
+      changed_when: true
+
+    - name: Push image {{ tool }}
+      command: >
+        docker push ghcr.io/{{ registry_org }}/audit-{{ tool }}:{{ image_tag }}
+      changed_when: true

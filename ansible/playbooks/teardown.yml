@@ -1,0 +1,17 @@
+---
+- name: Teardown security audit infrastructure
+  hosts: localhost
+  gather_facts: false
+  tasks:
+    - name: Suppression namespace (cascade delete)
+      kubernetes.core.k8s:
+        state: absent
+        api_version: v1
+        kind: Namespace
+        name: "{{ k8s_namespace }}"
+      when: confirm_teardown | default(false) | bool
+
+    - name: Confirmation requise
+      fail:
+        msg: "Relancer avec -e confirm_teardown=true pour confirmer la suppression."
+      when: not (confirm_teardown | default(false) | bool)

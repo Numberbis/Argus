@@ -1,0 +1,378 @@
+---
+# Argus — Full stack without Kubernetes
+#
+# Quick start:
+#   cp .env.example .env   # edit variables
+#   docker compose up -d   # start postgres + collector + dashboard
+#   make scan              # run all scanners against all sites in config/websites.yml
+#
+# Dashboard : http://localhost:5000
+# Collector : http://localhost:8080
+#
+# To run scanners automatically on a schedule:
+#   docker compose --profile scheduler up -d
+
+x-scanner-defaults: &scanner-defaults
+  restart: "no"
+  networks:
+    - audit-net
+  depends_on:
+    collector:
+      condition: service_healthy
+  environment:
+    COLLECTOR_URL: http://collector:8080
+
+services:
+
+  # ─────────────────────────────────────────────
+  # Core infrastructure (always running)
+  # ─────────────────────────────────────────────
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: audit-postgres
+    restart: unless-stopped
+    networks:
+      - audit-net
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-audit_db}
+      POSTGRES_USER: ${POSTGRES_USER:-audit}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./ansible/roles/postgresql/files/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-audit} -d ${POSTGRES_DB:-audit_db}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    ports:
+      - "5432:5432"
+
+  # db-init supprimé : le schéma complet est appliqué automatiquement par Postgres
+  # via le mount ./ansible/roles/postgresql/files/schema.sql → /docker-entrypoint-initdb.d/
+
+  collector:
+    build:
+      context: ./docker/collector
+    container_name: argus-collector
+    restart: unless-stopped
+    networks:
+      - audit-net
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DB_URL: postgresql://${POSTGRES_USER:-audit}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-audit_db}
+      AGENT_URL: ${AGENT_URL:-http://agent:8090}
+      AGENT_TRIAGE_ENABLED: ${AGENT_TRIAGE_ENABLED:-true}
+    ports:
+      - "8080:8080"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; urllib.request.urlopen('http://localhost:8080/health',timeout=2)"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  dashboard:
+    build:
+      context: ./docker/dashboard
+    container_name: argus-dashboard
+    restart: unless-stopped
+    networks:
+      - audit-net
+    depends_on:
+      collector:
+        condition: service_healthy
+    environment:
+      DB_URL: postgresql://${POSTGRES_USER:-audit}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-audit_db}
+      AGENT_URL: ${AGENT_URL:-http://agent:8090}
+      DASHBOARD_USER: ${DASHBOARD_USER:-}
+      DASHBOARD_PASSWORD: ${DASHBOARD_PASSWORD:-}
+    ports:
+      - "5000:5000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; urllib.request.urlopen('http://localhost:5000/health',timeout=2)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ─────────────────────────────────────────────
+  # Argus AI Agent — triage, remédiation, chat
+  # Activé par défaut. Désactivez avec : COMPOSE_PROFILES=no-agent
+  # Configurez votre clé LLM dans .env (LLM_PROVIDER + ANTHROPIC_API_KEY|...)
+  # ─────────────────────────────────────────────
+  agent:
+    build:
+      context: ./docker/agent
+    container_name: argus-agent
+    restart: unless-stopped
+    networks:
+      - audit-net
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DB_URL: postgresql://${POSTGRES_USER:-audit}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-audit_db}
+      LLM_PROVIDER: ${LLM_PROVIDER:-anthropic}
+      LLM_MODEL: ${LLM_MODEL:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      LLM_API_BASE: ${LLM_API_BASE:-}
+      LLM_DAILY_BUDGET_USD: ${LLM_DAILY_BUDGET_USD:-2.0}
+      TRIAGE_MAX_FINDINGS: ${TRIAGE_MAX_FINDINGS:-100}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    ports:
+      - "8090:8090"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8090/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+  # ─────────────────────────────────────────────
+  # Demo — charge des données réalistes en base
+  # Run with: make demo
+  # ─────────────────────────────────────────────
+
+  demo-seeder:
+    build:
+      context: ./docker/demo-seeder
+    container_name: audit-demo-seeder
+    restart: "no"
+    profiles:
+      - demo
+    networks:
+      - audit-net
+    depends_on:
+      collector:
+        condition: service_healthy
+    environment:
+      DB_URL: postgresql://${POSTGRES_USER:-audit}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-audit_db}
+
+  # ─────────────────────────────────────────────
+  # Schedulers — cron-based jobs
+  # Run with: docker compose --profile scheduler up -d
+  # ─────────────────────────────────────────────
+
+  notifier:
+    build:
+      context: ./docker/notifier
+    container_name: audit-notifier
+    restart: unless-stopped
+    profiles:
+      - scheduler
+    networks:
+      - audit-net
+    depends_on:
+      collector:
+        condition: service_healthy
+    environment:
+      DB_URL: postgresql://${POSTGRES_USER:-audit}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-audit_db}
+      SLACK_TOKEN: ${SLACK_TOKEN:-}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      SMTP_FROM: ${SMTP_FROM:-audit@example.com}
+    # Runs every 15 minutes via internal loop
+    command: >
+      sh -c "while true; do python notify.py; sleep 900; done"
+
+  report-generator:
+    build:
+      context: ./docker/report-generator
+    container_name: audit-report-generator
+    restart: unless-stopped
+    profiles:
+      - scheduler
+    networks:
+      - audit-net
+    depends_on:
+      collector:
+        condition: service_healthy
+    environment:
+      DB_URL: postgresql://${POSTGRES_USER:-audit}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-audit_db}
+      REPORT_OUTPUT_DIR: /reports
+      LOOKBACK_HOURS: ${REPORT_LOOKBACK_HOURS:-24}
+    volumes:
+      - reports-data:/reports
+    # Runs daily at 07:00 via internal loop
+    command: >
+      sh -c "while true; do python generate.py; sleep 86400; done"
+
+  # ─────────────────────────────────────────────
+  # Scanners — on-demand via:
+  #   docker compose run --rm <tool> \
+  #     -e TARGET_URL=https://example.com \
+  #     -e TARGET_NAME=example
+  #
+  # Or run all sites at once:
+  #   make scan
+  #   make scan-tool TOOL=nuclei
+  #   make scan-site SITE=my-site
+  # ─────────────────────────────────────────────
+
+  zap:
+    build:
+      context: ./docker/zap
+    image: audit-zap
+    <<: *scanner-defaults
+    profiles:
+      - scanners
+    environment:
+      COLLECTOR_URL: http://collector:8080
+      TARGET_URL: ${TARGET_URL:-}
+      TARGET_NAME: ${TARGET_NAME:-}
+      SCAN_PROFILE: ${SCAN_PROFILE:-full}
+    deploy:
+      resources:
+        limits:
+          memory: 2g
+
+  nikto:
+    build:
+      context: ./docker/nikto
+    image: audit-nikto
+    <<: *scanner-defaults
+    profiles:
+      - scanners
+    environment:
+      COLLECTOR_URL: http://collector:8080
+      TARGET_URL: ${TARGET_URL:-}
+      TARGET_NAME: ${TARGET_NAME:-}
+      SCAN_PROFILE: ${SCAN_PROFILE:-full}
+
+  nmap:
+    build:
+      context: ./docker/nmap
+    image: audit-nmap
+    <<: *scanner-defaults
+    profiles:
+      - scanners
+    environment:
+      COLLECTOR_URL: http://collector:8080
+      TARGET_URL: ${TARGET_URL:-}
+      TARGET_NAME: ${TARGET_NAME:-}
+      SCAN_PROFILE: ${SCAN_PROFILE:-full}
+    cap_add:
+      - NET_RAW
+      - NET_ADMIN
+
+  testssl:
+    build:
+      context: ./docker/testssl
+    image: audit-testssl
+    <<: *scanner-defaults
+    profiles:
+      - scanners
+    environment:
+      COLLECTOR_URL: http://collector:8080
+      TARGET_URL: ${TARGET_URL:-}
+      TARGET_NAME: ${TARGET_NAME:-}
+
+  nuclei:
+    build:
+      context: ./docker/nuclei
+    image: audit-nuclei
+    <<: *scanner-defaults
+    profiles:
+      - scanners
+    environment:
+      COLLECTOR_URL: http://collector:8080
+      TARGET_URL: ${TARGET_URL:-}
+      TARGET_NAME: ${TARGET_NAME:-}
+      SCAN_PROFILE: ${SCAN_PROFILE:-full}
+    volumes:
+      - nuclei-templates:/root/nuclei-templates
+
+  wpscan:
+    build:
+      context: ./docker/wpscan
+    image: audit-wpscan
+    <<: *scanner-defaults
+    profiles:
+      - scanners
+    environment:
+      COLLECTOR_URL: http://collector:8080
+      TARGET_URL: ${TARGET_URL:-}
+      TARGET_NAME: ${TARGET_NAME:-}
+      SCAN_PROFILE: ${SCAN_PROFILE:-light}
+      WPSCAN_API_TOKEN: ${WPSCAN_API_TOKEN:-}  # Optionnel — augmente la base CVE WPScan
+
+  trivy:
+    build:
+      context: ./docker/trivy
+    image: audit-trivy
+    <<: *scanner-defaults
+    profiles:
+      - scanners
+    environment:
+      COLLECTOR_URL: http://collector:8080
+      TARGET_URL: ${TARGET_URL:-}
+      TARGET_NAME: ${TARGET_NAME:-}
+    volumes:
+      - trivy-cache:/root/.cache/trivy  # Cache de la DB CVE (évite re-téléchargement)
+
+  # ─────────────────────────────────────────────
+  # Observabilité — Prometheus + Grafana
+  # Run with: docker compose --profile monitoring up -d
+  # Dashboard : http://localhost:3000  (admin/admin)
+  # Prometheus : http://localhost:9090
+  # ─────────────────────────────────────────────
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: audit-prometheus
+    restart: unless-stopped
+    profiles:
+      - monitoring
+    networks:
+      - audit-net
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--storage.tsdb.retention.time=30d"
+      - "--web.enable-lifecycle"
+    ports:
+      - "9090:9090"
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: audit-grafana
+    restart: unless-stopped
+    profiles:
+      - monitoring
+    networks:
+      - audit-net
+    depends_on:
+      - prometheus
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_SERVER_ROOT_URL: "%(protocol)s://%(domain)s:%(http_port)s/"
+      GF_INSTALL_PLUGINS: ""
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    ports:
+      - "3000:3000"
+
+networks:
+  audit-net:
+    driver: bridge
+
+volumes:
+  postgres-data:
+  reports-data:
+  nuclei-templates:
+  trivy-cache:
+  prometheus-data:
+  grafana-data:

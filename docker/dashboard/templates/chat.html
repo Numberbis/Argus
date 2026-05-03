@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}Chat — Argus{% endblock %}
+{% block content %}
+<h1>Chat</h1>
+<p class="subtitle">Posez des questions en langage naturel sur vos données de sécurité. L'agent traduit en SQL (read-only) et résume la réponse.</p>
+
+<div class="panel">
+  <form id="chatForm" onsubmit="ask(event)">
+    <input id="q" type="text" placeholder="Ex: Quels sites ont des CVE critiques ouvertes depuis plus de 7 jours ?"
+           style="width:100%;padding:12px;font-size:1em;border:1px solid #d0d7e2;border-radius:6px;" autofocus>
+    <div style="margin-top:1em;display:flex;gap:0.5em;flex-wrap:wrap;">
+      <button class="ai" type="submit">Demander</button>
+      <button type="button" onclick="suggest('Combien de findings critiques par site ?')">💡 Critiques par site</button>
+      <button type="button" onclick="suggest('Liste les 10 derniers scans avec leur taux de faux positifs')">💡 FP par scan</button>
+      <button type="button" onclick="suggest('Coût total IA aujourd''hui')">💡 Coût IA</button>
+    </div>
+  </form>
+</div>
+
+<div id="answer" style="display:none;"></div>
+
+<script>
+function suggest(t) { document.getElementById('q').value = t; }
+
+async function ask(e) {
+  e.preventDefault();
+  const q = document.getElementById('q').value.trim();
+  if (!q) return;
+  const out = document.getElementById('answer');
+  out.style.display = ''; out.innerHTML = '<div class="panel">⏳ Réflexion...</div>';
+  try {
+    const r = await fetch('/api/chat', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({question: q}),
+    });
+    const data = await r.json();
+    if (!r.ok) throw new Error(data.error || 'erreur');
+    let html = '<div class="panel">' + data.answer_html + '</div>';
+    if (data.sql) {
+      html += '<details class="panel"><summary class="muted small">SQL exécuté · coût $' +
+              data.cost_usd.toFixed(4) + ' · ' + data.rows.length + ' lignes</summary>' +
+              '<pre>' + data.sql + '</pre></details>';
+    }
+    out.innerHTML = html;
+  } catch (e) {
+    out.innerHTML = '<div class="panel" style="border-left:4px solid #dc2626;">Erreur : ' + e.message + '</div>';
+  }
+}
+</script>
+{% endblock %}

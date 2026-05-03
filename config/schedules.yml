@@ -1,0 +1,35 @@
+---
+# Planification des CronJobs Kubernetes par outil
+schedules:
+  zap:         "0 2 * * 1"    # Lundi 02h00 (scan le plus long)
+  nikto:       "0 3 * * 2"    # Mardi 03h00
+  nmap:        "0 4 * * 3"    # Mercredi 04h00
+  testssl:     "0 2 * * *"    # Quotidien (expiry TLS critique)
+  nuclei:      "0 5 * * 4"    # Jeudi 05h00
+  observatory: "0 6 * * *"    # Quotidien 06h00 (en-têtes HTTP, rapide)
+  retirejs:    "0 5 * * 5"    # Vendredi 05h00 (bibliothèques JS)
+  reports:     "0 7 * * *"    # Quotidien 07h00 (génération rapports)
+  notifier:    "*/15 * * * *" # Toutes les 15 min (alertes critiques immédiates)
+
+resource_limits:
+  zap:
+    cpu: "1000m"
+    memory: "2Gi"
+  nikto:
+    cpu: "200m"
+    memory: "256Mi"
+  nmap:
+    cpu: "200m"
+    memory: "128Mi"
+  testssl:
+    cpu: "100m"
+    memory: "128Mi"
+  nuclei:
+    cpu: "500m"
+    memory: "512Mi"
+  observatory:
+    cpu: "100m"
+    memory: "128Mi"
+  retirejs:
+    cpu: "200m"
+    memory: "256Mi"

@@ -1,0 +1,25 @@
+---
+# Playbook principal : provisionne l'intégralité de l'infrastructure d'audit
+- name: Setup security audit infrastructure
+  hosts: localhost
+  gather_facts: false
+
+  pre_tasks:
+    - name: Vérification kubectl disponible
+      command: kubectl version --client
+      changed_when: false
+
+    - name: Vérification docker disponible
+      command: docker info
+      changed_when: false
+
+  roles:
+    - role: namespace         # 1. Namespace + RBAC
+    - role: secrets           # 2. Secrets K8s (DB, Slack, SMTP)
+    - role: postgresql        # 3. PostgreSQL + schéma
+    - role: scanner-images    # 4. Build + push images Docker
+    - role: collector         # 5. Microservice collecteur de résultats
+    - role: cronjobs          # 6. CronJobs par outil × site
+    - role: report-generator  # 7. Générateur de rapports quotidien
+    - role: notifier          # 8. Notificateur email/Slack
+    - role: dashboard         # 9. Dashboard Flask + Ingress TLS

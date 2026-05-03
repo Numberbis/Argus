@@ -1,0 +1,12 @@
+# Dépendances de test pour la plateforme d'audit de sécurité
+pytest==8.3.3
+pytest-asyncio==0.24.0
+pytest-html==4.1.1     # Rapport HTML des tests
+httpx==0.27.2          # Client HTTP pour TestClient FastAPI
+pytest-mock==3.14.0    # Fixtures de mock
+psycopg2-binary==2.9.9
+fastapi==0.115.0
+uvicorn==0.30.6
+pydantic==2.9.2
+requests==2.32.3
+pyyaml==6.0.2          # Lecture de config/websites.yml dans les tests

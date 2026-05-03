@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Findings scan #{{ scan_id }}{% endblock %}
+{% block content %}
+<h1>Findings — Scan #{{ scan_id }}</h1>
+{% if findings %}
+<p><a href="/site/{{ findings[0].target }}">← Retour à {{ findings[0].target }}</a></p>
+{% endif %}
+<table>
+  <thead>
+    <tr>
+      <th>Sévérité</th>
+      <th>Outil</th>
+      <th>Titre</th>
+      <th>URL</th>
+      <th>CVE</th>
+      <th>CVSS</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for f in findings %}
+    <tr>
+      <td><span class="badge badge-{{ f.severity }}">{{ f.severity }}</span></td>
+      <td><code>{{ f.tool }}</code></td>
+      <td title="{{ f.description or '' }}">{{ f.title }}</td>
+      <td style="font-size:0.8em;word-break:break-all;">{{ f.url or '' }}</td>
+      <td>{{ f.cve_ids | join(', ') if f.cve_ids else '' }}</td>
+      <td>{{ f.cvss_score or '' }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

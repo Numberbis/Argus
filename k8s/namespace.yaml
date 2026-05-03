@@ -1,0 +1,50 @@
+---
+# Namespace principal pour la plateforme d'audit de sécurité
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: security-audit
+  labels:
+    app: security-audit
+    environment: production
+
+---
+# ServiceAccount utilisé par tous les pods scanners
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: audit-scanner
+  namespace: security-audit
+  labels:
+    app: security-audit
+
+---
+# Role limité au namespace security-audit
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: audit-scanner
+  namespace: security-audit
+rules:
+  - apiGroups: [""]
+    resources: ["pods", "pods/log"]
+    verbs: ["get", "list"]
+  - apiGroups: ["batch"]
+    resources: ["jobs"]
+    verbs: ["get", "list"]
+
+---
+# Liaison Role → ServiceAccount
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: audit-scanner
+  namespace: security-audit
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: audit-scanner
+subjects:
+  - kind: ServiceAccount
+    name: audit-scanner
+    namespace: security-audit

@@ -1,0 +1,15 @@
+---
+# Seuils d'alerte pour les notifications
+alerts:
+  immediate:          # Notification immédiate (notifier toutes les 15 min)
+    severities: [CRITICAL, HIGH]
+  daily_digest:       # Récapitulatif quotidien
+    severities: [MEDIUM, LOW, INFO]
+
+# Score CVSS minimum pour notifier
+cvss_threshold:
+  immediate: 7.0
+  daily: 4.0
+
+# Nombre max de findings par mail (évite les spams)
+max_findings_per_notification: 20

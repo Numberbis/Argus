@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head><meta charset="UTF-8"><title>Alerte sécurité</title></head>
+<body style="font-family:Arial,sans-serif;color:#333;max-width:700px;margin:0 auto;">
+  <h2 style="color:#c0392b;">Alerte d'audit de sécurité — {{ target }}</h2>
+  <p>{{ findings|length }} finding(s) détecté(s) le {{ generated_at }}</p>
+  <table style="width:100%;border-collapse:collapse;">
+    <thead>
+      <tr style="background:#2c3e50;color:white;">
+        <th style="padding:8px;text-align:left;">Sévérité</th>
+        <th style="padding:8px;text-align:left;">Outil</th>
+        <th style="padding:8px;text-align:left;">Titre</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for f in findings %}
+      <tr style="border-bottom:1px solid #eee;">
+        <td style="padding:8px;font-weight:bold;color:{{'#c0392b' if f.severity=='CRITICAL' else '#e67e22' if f.severity=='HIGH' else '#f39c12'}}">{{ f.severity }}</td>
+        <td style="padding:8px;">{{ f.tool }}</td>
+        <td style="padding:8px;">{{ f.title }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <p style="font-size:0.85em;color:#888;margin-top:2em;">
+    Cet email a été généré automatiquement par le système d'audit de sécurité.
+  </p>
+</body>
+</html>

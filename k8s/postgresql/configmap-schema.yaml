@@ -1,0 +1,57 @@
+---
+# Schéma SQL d'initialisation de la base de données
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: postgresql-schema
+  namespace: security-audit
+  labels:
+    app: postgresql
+data:
+  init.sql: |
+    -- Schéma d'initialisation de la base audit_db
+
+    CREATE TABLE IF NOT EXISTS scans (
+        id            SERIAL PRIMARY KEY,
+        tool          VARCHAR(20)  NOT NULL,
+        target        VARCHAR(100) NOT NULL,
+        target_url    TEXT         NOT NULL,
+        started_at    TIMESTAMPTZ  NOT NULL,
+        finished_at   TIMESTAMPTZ,
+        status        VARCHAR(20)  NOT NULL DEFAULT 'running',
+        raw_output    JSONB
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_scans_target      ON scans(target);
+    CREATE INDEX IF NOT EXISTS idx_scans_tool        ON scans(tool);
+    CREATE INDEX IF NOT EXISTS idx_scans_started_at  ON scans(started_at DESC);
+    CREATE INDEX IF NOT EXISTS idx_scans_status      ON scans(status);
+
+    CREATE TABLE IF NOT EXISTS findings (
+        id            SERIAL PRIMARY KEY,
+        scan_id       INTEGER      NOT NULL REFERENCES scans(id) ON DELETE CASCADE,
+        severity      VARCHAR(20)  NOT NULL,
+        title         TEXT         NOT NULL,
+        description   TEXT,
+        url           TEXT,
+        cvss_score    NUMERIC(4,1),
+        cve_ids       TEXT[]       DEFAULT '{}',
+        remediation   TEXT,
+        notified_at   TIMESTAMPTZ
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_findings_scan_id     ON findings(scan_id);
+    CREATE INDEX IF NOT EXISTS idx_findings_severity    ON findings(severity);
+    CREATE INDEX IF NOT EXISTS idx_findings_notified_at ON findings(notified_at);
+
+    CREATE TABLE IF NOT EXISTS reports (
+        id            SERIAL PRIMARY KEY,
+        generated_at  TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+        report_type   VARCHAR(20)  NOT NULL,
+        target        VARCHAR(100),
+        html_path     TEXT,
+        pdf_path      TEXT
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_reports_generated_at ON reports(generated_at DESC);
+    CREATE INDEX IF NOT EXISTS idx_reports_target       ON reports(target);

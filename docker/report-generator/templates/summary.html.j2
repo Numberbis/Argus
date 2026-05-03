@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Synthèse sécurité — Tous les sites</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 40px; color: #333; }
+    h1 { color: #2c3e50; }
+    .meta { color: #888; font-size: 0.9em; }
+    table { width: 100%; border-collapse: collapse; margin-top: 1em; }
+    th { background: #2c3e50; color: white; padding: 8px 12px; text-align: left; }
+    td { padding: 8px 12px; border-bottom: 1px solid #eee; }
+    .CRITICAL { color: #c0392b; font-weight: bold; }
+    .HIGH     { color: #e67e22; font-weight: bold; }
+    .MEDIUM   { color: #f39c12; }
+    footer { margin-top: 3em; padding-top: 1em; border-top: 1px solid #ddd; font-size: 0.85em; color: #888; text-align: center; }
+    footer strong { color: #2c3e50; }
+  </style>
+</head>
+<body>
+  <h1>Synthèse d'audit de sécurité — Tous les sites</h1>
+  <p class="meta">Généré le {{ generated_at }} — {{ findings|length }} finding(s) au total</p>
+
+  {% set targets = findings | map(attribute='target') | unique | list %}
+  <h2>Résumé par site</h2>
+  <table>
+    <thead>
+      <tr><th>Site</th><th>CRITICAL</th><th>HIGH</th><th>MEDIUM</th><th>LOW</th><th>Total</th></tr>
+    </thead>
+    <tbody>
+      {% for t in targets %}
+      {% set site_findings = findings | selectattr('target', 'eq', t) | list %}
+      <tr>
+        <td>{{ t }}</td>
+        <td class="CRITICAL">{{ site_findings | selectattr('severity', 'eq', 'CRITICAL') | list | length }}</td>
+        <td class="HIGH">{{ site_findings | selectattr('severity', 'eq', 'HIGH') | list | length }}</td>
+        <td class="MEDIUM">{{ site_findings | selectattr('severity', 'eq', 'MEDIUM') | list | length }}</td>
+        <td>{{ site_findings | selectattr('severity', 'eq', 'LOW') | list | length }}</td>
+        <td><strong>{{ site_findings | length }}</strong></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <h2>Top findings CRITICAL / HIGH</h2>
+  <table>
+    <thead>
+      <tr><th>Site</th><th>Sévérité</th><th>Outil</th><th>Titre</th></tr>
+    </thead>
+    <tbody>
+      {% for f in findings if f.severity in ('CRITICAL', 'HIGH') %}
+      <tr>
+        <td>{{ f.target }}</td>
+        <td class="{{ f.severity }}">{{ f.severity }}</td>
+        <td>{{ f.tool }}</td>
+        <td>{{ f.title }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <footer>
+    Rapport généré par <strong>Build Web</strong> —
+    <a href="mailto:contact@buildweb.fr">contact@buildweb.fr</a> —
+    07 81 55 02 56
+  </footer>
+</body>
+</html>

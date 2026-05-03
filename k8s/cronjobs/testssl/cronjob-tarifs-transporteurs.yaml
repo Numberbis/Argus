@@ -1,0 +1,51 @@
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: testssl-tarifs-transporteurs
+  namespace: security-audit
+  labels:
+    app: security-audit
+    tool: testssl
+    target: tarifs-transporteurs
+spec:
+  schedule: "0 2 * * *"  # Quotidien 02h00
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 5
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      activeDeadlineSeconds: 600
+      template:
+        spec:
+          restartPolicy: OnFailure
+          serviceAccountName: audit-scanner
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+          containers:
+            - name: testssl-scanner
+              image: ghcr.io/YOUR_ORG/audit-testssl:YOUR_TAG
+              imagePullPolicy: Always
+              env:
+                - name: TARGET_URL
+                  value: "https://tarifs.example.com"
+                - name: TARGET_NAME
+                  value: "tarifs-transporteurs"
+                - name: COLLECTOR_URL
+                  value: "http://collector:8080"
+              envFrom:
+                - secretRef:
+                    name: audit-secrets
+              resources:
+                requests:
+                  cpu: "50m"
+                  memory: "64Mi"
+                limits:
+                  cpu: "100m"
+                  memory: "128Mi"
+              securityContext:
+                allowPrivilegeEscalation: false
+                capabilities:
+                  drop: ["ALL"]

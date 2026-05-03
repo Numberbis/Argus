@@ -1,0 +1,17 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: collector
+  namespace: security-audit
+  labels:
+    app: collector
+spec:
+  selector:
+    app: collector
+  ports:
+    - port: 8080
+      targetPort: 8080
+      protocol: TCP
+      name: http
+  type: ClusterIP

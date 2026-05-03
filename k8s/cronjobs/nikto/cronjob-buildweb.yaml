@@ -1,0 +1,52 @@
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: nikto-buildweb
+  namespace: security-audit
+  labels:
+    app: security-audit
+    tool: nikto
+    target: buildweb
+spec:
+  schedule: "0 3 * * 2"  # Mardi 03h00
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 5
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      activeDeadlineSeconds: 1800
+      template:
+        spec:
+          restartPolicy: OnFailure
+          serviceAccountName: audit-scanner
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+          containers:
+            - name: nikto-scanner
+              image: ghcr.io/YOUR_ORG/audit-nikto:YOUR_TAG
+              imagePullPolicy: Always
+              env:
+                - name: TARGET_URL
+                  value: "https://buildweb.fr"
+                - name: TARGET_NAME
+                  value: "buildweb"
+                - name: COLLECTOR_URL
+                  value: "http://collector:8080"
+              envFrom:
+                - secretRef:
+                    name: audit-secrets
+              resources:
+                requests:
+                  cpu: "100m"
+                  memory: "128Mi"
+                limits:
+                  cpu: "200m"
+                  memory: "256Mi"
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities:
+                  drop: ["ALL"]

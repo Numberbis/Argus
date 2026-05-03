@@ -1,0 +1,40 @@
+---
+- name: Déploiement CronJobs ZAP pour chaque site
+  kubernetes.core.k8s:
+    state: present
+    template: cronjob-zap.yaml.j2
+  loop: "{{ websites }}"
+  loop_control:
+    loop_var: website
+
+- name: Déploiement CronJobs Nikto pour chaque site
+  kubernetes.core.k8s:
+    state: present
+    template: cronjob-nikto.yaml.j2
+  loop: "{{ websites }}"
+  loop_control:
+    loop_var: website
+
+- name: Déploiement CronJobs Nmap pour chaque site
+  kubernetes.core.k8s:
+    state: present
+    template: cronjob-nmap.yaml.j2
+  loop: "{{ websites }}"
+  loop_control:
+    loop_var: website
+
+- name: Déploiement CronJobs testssl pour chaque site
+  kubernetes.core.k8s:
+    state: present
+    template: cronjob-testssl.yaml.j2
+  loop: "{{ websites }}"
+  loop_control:
+    loop_var: website
+
+- name: Déploiement CronJobs Nuclei pour chaque site
+  kubernetes.core.k8s:
+    state: present
+    template: cronjob-nuclei.yaml.j2
+  loop: "{{ websites }}"
+  loop_control:
+    loop_var: website

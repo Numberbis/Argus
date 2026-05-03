@@ -1,0 +1,45 @@
+---
+# IMPORTANT : remplacer YOUR_ORG par votre organisation GitHub
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: report-generator
+  namespace: security-audit
+  labels:
+    app: security-audit
+    component: report-generator
+spec:
+  schedule: "0 7 * * *"  # Quotidien à 07h00
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 5
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      activeDeadlineSeconds: 1800  # 30 minutes max
+      template:
+        spec:
+          restartPolicy: OnFailure
+          serviceAccountName: audit-scanner
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+          containers:
+            - name: report-generator
+              image: ghcr.io/YOUR_ORG/audit-report-generator:YOUR_TAG
+              imagePullPolicy: Always
+              envFrom:
+                - secretRef:
+                    name: audit-secrets
+              resources:
+                requests:
+                  cpu: "100m"
+                  memory: "256Mi"
+                limits:
+                  cpu: "500m"
+                  memory: "512Mi"
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: false  # Écriture des rapports nécessaire
+                capabilities:
+                  drop: ["ALL"]

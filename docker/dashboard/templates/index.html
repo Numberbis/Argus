@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block title %}Argus — Dashboard{% endblock %}
+{% block content %}
+<h1>Dashboard</h1>
+<p class="subtitle">Vue d'ensemble de tous les sites audités. Cliquez sur un site pour le détail.</p>
+
+{% if not agent_available %}
+<div class="panel" style="background:#fef3c7;border-left:4px solid #ca8a04;">
+  <strong>Agent IA désactivé.</strong> Configurez <code>LLM_PROVIDER</code> et la clé API
+  correspondante dans <code>.env</code> pour activer le triage automatique, la remédiation
+  et le chat. Voir le <a href="/">README</a>.
+</div>
+{% endif %}
+
+<table>
+  <thead>
+    <tr>
+      <th>Site</th>
+      <th>Dernier scan</th>
+      <th>Scans</th>
+      <th title="Findings bruts (avant triage)">Raw</th>
+      <th title="Real issues = après triage IA (sans FP, sans doublons)">Real <span class="badge badge-AI">AI</span></th>
+      <th><span class="badge badge-CRITICAL">CRIT</span></th>
+      <th><span class="badge badge-HIGH">HIGH</span></th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for s in sites %}
+    <tr>
+      <td><a href="/site/{{ s.target }}"><strong>{{ s.target }}</strong></a></td>
+      <td class="small muted">{{ s.last_scan.strftime('%Y-%m-%d %H:%M') if s.last_scan else 'Jamais' }}</td>
+      <td>{{ s.total_scans }}</td>
+      <td class="muted">{{ s.raw_findings }}</td>
+      <td>
+        {% if s.real_issues %}
+          <strong>{{ s.real_issues }}</strong>
+          {% if s.raw_findings and s.real_issues < s.raw_findings %}
+          <span class="small muted">(−{{ s.raw_findings - s.real_issues }})</span>
+          {% endif %}
+        {% else %}
+          <span class="muted">—</span>
+        {% endif %}
+      </td>
+      <td>{% if s.critical %}<span class="badge badge-CRITICAL">{{ s.critical }}</span>{% else %}<span class="muted">0</span>{% endif %}</td>
+      <td>{% if s.high %}<span class="badge badge-HIGH">{{ s.high }}</span>{% else %}<span class="muted">0</span>{% endif %}</td>
+    </tr>
+    {% else %}
+    <tr><td colspan="7" style="text-align:center;color:#888;">Aucun scan effectué. Lancez <code>make scan</code> pour démarrer.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<p class="small muted" style="margin-top:1em;">
+  <strong>Raw</strong> : tous les findings remontés par les scanners.
+  <strong>Real</strong> : findings restants après que l'agent IA a éliminé les faux positifs et fusionné les doublons.
+</p>
+{% endblock %}

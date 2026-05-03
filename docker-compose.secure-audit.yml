@@ -1,0 +1,47 @@
+---
+# Secure Audit (By Build Web) — Application web d'audit de sécurité
+#
+# Usage :
+#   docker compose -f docker-compose.secure-audit.yml up -d --build
+#   Ouvrir http://localhost:5001
+#
+# Identifiants par défaut : admin / changeme
+# À modifier impérativement via les variables d'environnement ci-dessous.
+
+services:
+  secure-audit:
+    build:
+      context: docker/secure-audit
+    image: secure-audit:latest
+    container_name: secure-audit
+    ports:
+      - "5001:5000"
+    environment:
+      # Clé secrète Flask — utiliser une valeur longue et aléatoire en production
+      SECRET_KEY: "changez-cette-cle-secrete-en-production"
+      # Chemin du fichier utilisateurs
+      USERS_FILE: "/app/data/users.json"
+      # Utilisateurs créés automatiquement au premier démarrage (si users.json absent).
+      # Sans allowed_urls → accès illimité. Modifier les mots de passe avant de lancer !
+      INITIAL_USERS: >-
+        [
+          {"username": "admin",      "password": "changeme"},
+          {"username": "chez-meilan","password": "changeme",
+           "allowed_urls": ["https://chez-meilan.fr"],
+           "description": "Client Chez Meilan"}
+        ]
+      # Compte de secours si INITIAL_USERS et users.json sont tous les deux absents
+      AUDIT_USERNAME: "admin"
+      AUDIT_PASSWORD: "changeme"
+    volumes:
+      - secure-audit-data:/app/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:5000/login || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  secure-audit-data:

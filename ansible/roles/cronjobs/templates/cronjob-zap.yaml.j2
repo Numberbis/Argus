@@ -1,0 +1,52 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: zap-{{ website.name }}
+  namespace: {{ k8s_namespace }}
+  labels:
+    app: security-audit
+    tool: zap
+    target: {{ website.name }}
+spec:
+  schedule: "{{ schedules.zap }}"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 5
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      activeDeadlineSeconds: 7200  # 2h max
+      template:
+        spec:
+          restartPolicy: OnFailure
+          serviceAccountName: audit-scanner
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            fsGroup: 1000
+          containers:
+            - name: zap-scanner
+              image: ghcr.io/{{ registry_org }}/audit-zap:{{ image_tag }}
+              imagePullPolicy: Always
+              env:
+                - name: TARGET_URL
+                  value: "{{ website.url }}"
+                - name: TARGET_NAME
+                  value: "{{ website.name }}"
+                - name: SCAN_PROFILE
+                  value: "{{ website.scan_profile }}"
+                - name: COLLECTOR_URL
+                  value: "http://collector:8080"
+              envFrom:
+                - secretRef:
+                    name: audit-secrets
+              resources:
+                requests:
+                  cpu: "500m"
+                  memory: "1Gi"
+                limits:
+                  cpu: "{{ resource_limits.zap.cpu }}"
+                  memory: "{{ resource_limits.zap.memory }}"
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: false  # ZAP nécessite accès écriture

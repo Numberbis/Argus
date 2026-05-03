@@ -1,0 +1,16 @@
+---
+- name: Déploiement du collector
+  kubernetes.core.k8s:
+    state: present
+    template: deployment.yaml.j2
+
+- name: Service ClusterIP collector
+  kubernetes.core.k8s:
+    state: present
+    template: service.yaml.j2
+
+- name: Attente démarrage collector
+  command: >
+    kubectl rollout status deployment/collector
+    -n {{ k8s_namespace }} --timeout=60s
+  changed_when: false

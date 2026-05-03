@@ -1,0 +1,10 @@
+---
+- name: Création namespace {{ k8s_namespace }}
+  kubernetes.core.k8s:
+    state: present
+    template: namespace.yaml.j2
+
+- name: Création RBAC (ServiceAccount + ClusterRoleBinding)
+  kubernetes.core.k8s:
+    state: present
+    template: rbac.yaml.j2

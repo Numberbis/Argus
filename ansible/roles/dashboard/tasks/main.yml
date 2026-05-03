@@ -1,0 +1,15 @@
+---
+- name: Déploiement dashboard Flask
+  kubernetes.core.k8s:
+    state: present
+    template: deployment.yaml.j2
+
+- name: Service dashboard
+  kubernetes.core.k8s:
+    state: present
+    template: service.yaml.j2
+
+- name: Ingress TLS dashboard
+  kubernetes.core.k8s:
+    state: present
+    template: ingress.yaml.j2

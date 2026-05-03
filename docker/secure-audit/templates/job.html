@@ -1,0 +1,148 @@
+{% extends "base.html" %}
+{% block title %}Audit — {{ job.name }}{% endblock %}
+
+{% block content %}
+
+{% set grade_colors = {
+  'A+':'#198754','A':'#198754','B':'#0dcaf0',
+  'C':'#ffc107','D':'#fd7e14','F':'#dc3545'
+} %}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <div>
+    <h4 class="mb-0">Audit : <strong>{{ job.name }}</strong></h4>
+    <small class="text-muted">{{ job.url }}</small>
+  </div>
+  <a href="{{ url_for('index') }}" class="btn btn-outline-secondary btn-sm">
+    ← Retour
+  </a>
+</div>
+
+{# ─── État : en cours ─────────────────────────────────────────────────────── #}
+{% if job.status in ('pending', 'running') %}
+
+<div class="card shadow-sm text-center py-5">
+  <div class="card-body">
+    <div class="spinner-border text-primary mb-3" style="width:3rem;height:3rem" role="status">
+      <span class="visually-hidden">Chargement...</span>
+    </div>
+    <h5 class="mb-2">Audit en cours...</h5>
+    <p class="text-muted mb-1" id="progress-msg">{{ job.progress }}</p>
+    <small class="text-muted">Cette page se met à jour automatiquement.</small>
+  </div>
+</div>
+
+<script>
+  (function poll() {
+    fetch("{{ url_for('job_status', job_id=job.id) }}")
+      .then(r => r.json())
+      .then(data => {
+        const msg = document.getElementById('progress-msg');
+        if (msg) msg.textContent = data.progress || '';
+        if (data.status === 'done' || data.status === 'error') {
+          location.reload();
+        } else {
+          setTimeout(poll, 2500);
+        }
+      })
+      .catch(() => setTimeout(poll, 5000));
+  })();
+</script>
+
+{# ─── État : erreur ───────────────────────────────────────────────────────── #}
+{% elif job.status == 'error' %}
+
+<div class="alert alert-danger">
+  <strong>Erreur lors de l'audit :</strong><br>
+  {{ job.error }}
+</div>
+<a href="{{ url_for('index') }}" class="btn btn-primary">Nouvel audit</a>
+
+{# ─── État : terminé ──────────────────────────────────────────────────────── #}
+{% elif job.status == 'done' %}
+
+{% set res = job.result %}
+{% set g = res.grade %}
+{% set gcolor = grade_colors.get(g, '#6c757d') %}
+{% set crit = res.findings | selectattr('severity', 'equalto', 'CRITICAL') | list | length %}
+{% set high = res.findings | selectattr('severity', 'equalto', 'HIGH')     | list | length %}
+{% set med  = res.findings | selectattr('severity', 'equalto', 'MEDIUM')   | list | length %}
+{% set low  = res.findings | selectattr('severity', 'equalto', 'LOW')      | list | length %}
+
+<!-- Bandeau résumé -->
+<div class="row g-3 mb-4">
+
+  <!-- Note globale -->
+  <div class="col-md-3">
+    <div class="card shadow-sm h-100 text-center">
+      <div class="card-body d-flex flex-column justify-content-center">
+        <div style="font-size:3.5rem; font-weight:700; color:{{ gcolor }}; line-height:1">
+          {{ g }}
+        </div>
+        <div class="text-muted mt-1">Note globale</div>
+        <div class="fw-bold mt-1" style="font-size:1.1rem">{{ res.score }}/100</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Compteurs + actions -->
+  <div class="col-md-9">
+    <div class="card shadow-sm h-100">
+      <div class="card-body">
+        <div class="row text-center g-2 mb-3">
+          <div class="col-3">
+            <div style="font-size:2rem; color:#dc3545; font-weight:700">{{ crit or '—' }}</div>
+            <div class="small text-muted">Critique</div>
+          </div>
+          <div class="col-3">
+            <div style="font-size:2rem; color:#fd7e14; font-weight:700">{{ high or '—' }}</div>
+            <div class="small text-muted">Élevé</div>
+          </div>
+          <div class="col-3">
+            <div style="font-size:2rem; color:#856404; font-weight:700">{{ med or '—' }}</div>
+            <div class="small text-muted">Moyen</div>
+          </div>
+          <div class="col-3">
+            <div style="font-size:2rem; color:#0dcaf0; font-weight:700">{{ low or '—' }}</div>
+            <div class="small text-muted">Faible</div>
+          </div>
+        </div>
+        <div class="d-flex flex-wrap gap-2">
+          <a href="{{ url_for('job_report', job_id=job.id) }}" target="_blank"
+             class="btn btn-primary">
+            Rapport complet ↗
+          </a>
+          <a href="{{ url_for('job_download', job_id=job.id) }}"
+             class="btn btn-outline-secondary">
+            ⬇ Télécharger (HTML)
+          </a>
+          <a href="{{ url_for('index') }}" class="btn btn-outline-primary">
+            + Nouvel audit
+          </a>
+        </div>
+        <div class="text-muted small mt-2">Scanné le {{ res.scanned_at }}</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Rapport embarqué -->
+<div class="card shadow-sm">
+  <div class="card-header d-flex justify-content-between align-items-center py-2">
+    <span class="fw-bold">Rapport détaillé</span>
+    <a href="{{ url_for('job_report', job_id=job.id) }}" target="_blank"
+       class="btn btn-sm btn-outline-primary">
+      Ouvrir dans un onglet ↗
+    </a>
+  </div>
+  <div class="card-body p-0">
+    <iframe src="{{ url_for('job_report', job_id=job.id) }}"
+            style="width:100%; height:78vh; border:none;
+                   border-radius:0 0 0.375rem 0.375rem"
+            title="Rapport d'audit"></iframe>
+  </div>
+</div>
+
+{% endif %}
+
+{% endblock %}

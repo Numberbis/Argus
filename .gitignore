@@ -1,0 +1,56 @@
+# ── Secrets : NE JAMAIS commiter ─────────────────────────────────────────────
+.env
+.env.local
+.env.*.local
+k8s/secrets.yaml
+ansible/inventory/host_vars/*/vault.yml
+*.key
+*.pem
+*credentials*.json
+
+# ── Python ───────────────────────────────────────────────────────────────────
+venv_audit/
+venv/
+.venv/
+env/
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# ── Rapports générés ─────────────────────────────────────────────────────────
+reports/*.html
+reports/*.pdf
+reports/audit-*.json
+reports/tests/
+
+# ── Données de scan locales ──────────────────────────────────────────────────
+*.jsonl
+/tmp/
+nuclei-templates/
+trivy-cache/
+
+# ── Docker ───────────────────────────────────────────────────────────────────
+*.tar
+.dockerignore
+
+# ── IDE ──────────────────────────────────────────────────────────────────────
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# ── OS ───────────────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ── Notes locales (workflows internes) ───────────────────────────────────────
+PUBLISH_CHECKLIST.md
+TODO.local.md
+NOTES.local.md
+.claude/

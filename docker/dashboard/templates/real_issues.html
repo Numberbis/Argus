@@ -1,0 +1,131 @@
+{% extends "base.html" %}
+{% block title %}Real Issues — Argus{% endblock %}
+{% block content %}
+<h1>Real Issues {% if target %}— <code>{{ target }}</code>{% endif %}</h1>
+<p class="subtitle">
+  Findings après triage IA : faux positifs filtrés, doublons fusionnés, sévérités réajustées au contexte.
+  {% if target %}<a href="/real-issues">Voir tous les sites</a>{% endif %}
+</p>
+
+<div class="stat-cards">
+  <div class="card danger">
+    <div class="num">{{ stats.critical or 0 }}</div>
+    <div class="lbl">Critical</div>
+  </div>
+  <div class="card warn">
+    <div class="num">{{ stats.high or 0 }}</div>
+    <div class="lbl">High</div>
+  </div>
+  <div class="card">
+    <div class="num">{{ stats.medium or 0 }}</div>
+    <div class="lbl">Medium</div>
+  </div>
+  <div class="card ok">
+    <div class="num">{{ stats.false_positives or 0 }}</div>
+    <div class="lbl">FP filtrés</div>
+  </div>
+  <div class="card ok">
+    <div class="num">{{ stats.duplicates or 0 }}</div>
+    <div class="lbl">Doublons fusionnés</div>
+  </div>
+</div>
+
+{% if root_causes %}
+<div class="panel">
+  <h2 style="margin-top:0;">Causes racines identifiées</h2>
+  <p class="muted small">L'agent a regroupé les findings autour de {{ root_causes|length }} cause(s) racine(s) commune(s).</p>
+  {% for rc in root_causes %}
+  <div class="root-cause {{ rc.severity }}">
+    <div style="display:flex;justify-content:space-between;align-items:center;">
+      <strong>{{ rc.summary }}</strong>
+      <span><span class="badge badge-{{ rc.severity }}">{{ rc.severity }}</span> {{ rc.finding_count }} findings</span>
+    </div>
+    {% if rc.suggested_fix %}
+    <div class="small" style="margin-top:6px;">→ {{ rc.suggested_fix }}</div>
+    {% endif %}
+    {% if not target %}<div class="small muted">Site : <a href="/real-issues?target={{ rc.target }}">{{ rc.target }}</a></div>{% endif %}
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+<h2>Findings ({{ issues|length }})</h2>
+<table>
+  <thead>
+    <tr>
+      <th>AI Sev.</th>
+      <th>Outil</th>
+      {% if not target %}<th>Site</th>{% endif %}
+      <th>Titre</th>
+      <th>CVE</th>
+      <th>Confiance</th>
+      <th>Action</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for f in issues %}
+    <tr id="finding-row-{{ f.id }}">
+      <td>
+        <span class="badge badge-{{ f.severity }}">{{ f.severity }}</span>
+        {% if f.severity != f.raw_severity %}<div class="small muted" title="Sévérité brute du scanner">(scan: {{ f.raw_severity }})</div>{% endif %}
+      </td>
+      <td><code>{{ f.tool }}</code></td>
+      {% if not target %}<td><a href="/real-issues?target={{ f.target }}">{{ f.target }}</a></td>{% endif %}
+      <td>
+        {{ f.title }}
+        {% if f.url %}<div class="small muted" style="word-break:break-all;">{{ f.url }}</div>{% endif %}
+      </td>
+      <td class="small">{{ f.cve_ids | join(', ') if f.cve_ids else '—' }}</td>
+      <td class="small">{% if f.ai_confidence %}{{ "%.0f"|format(f.ai_confidence * 100) }}%{% else %}—{% endif %}</td>
+      <td>
+        {% if f.ai_remediation %}
+        <button onclick="toggleFix({{ f.id }})">Voir fix</button>
+        {% elif agent_available %}
+        <button class="ai" onclick="generateFix({{ f.id }})">Suggest fix</button>
+        {% else %}
+        <span class="muted small">AI off</span>
+        {% endif %}
+      </td>
+    </tr>
+    {% if f.ai_remediation %}
+    <tr id="fix-{{ f.id }}" style="display:none;">
+      <td colspan="{% if target %}6{% else %}7{% endif %}">
+        <div class="ai-block">
+          <h4>Fix suggéré par l'agent</h4>
+          <div class="ai-content">{{ f.ai_remediation|safe }}</div>
+        </div>
+      </td>
+    </tr>
+    {% endif %}
+    {% else %}
+    <tr><td colspan="7" style="text-align:center;color:#888;">Aucun finding triagé pour l'instant. Lancez un scan ou <code>make triage</code>.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<script>
+function toggleFix(id) {
+  const row = document.getElementById('fix-' + id);
+  if (row) row.style.display = row.style.display === 'none' ? '' : 'none';
+}
+async function generateFix(id) {
+  const btn = event.target;
+  btn.disabled = true; btn.textContent = '⏳ Génération...';
+  try {
+    const r = await fetch('/api/remediate/' + id, {method: 'POST'});
+    const data = await r.json();
+    if (!r.ok) throw new Error(data.error || 'erreur');
+    const tr = document.getElementById('finding-row-' + id);
+    const newRow = document.createElement('tr');
+    newRow.id = 'fix-' + id;
+    newRow.innerHTML = '<td colspan="7"><div class="ai-block"><h4>Fix suggéré (coût $' +
+                       data.cost_usd.toFixed(4) + ')</h4>' + data.remediation_html + '</div></td>';
+    tr.parentNode.insertBefore(newRow, tr.nextSibling);
+    btn.style.display = 'none';
+  } catch (e) {
+    btn.textContent = 'Suggest fix'; btn.disabled = false;
+    alert('Erreur : ' + e.message);
+  }
+}
+</script>
+{% endblock %}

@@ -1,0 +1,51 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: nmap-{{ website.name }}
+  namespace: {{ k8s_namespace }}
+  labels:
+    app: security-audit
+    tool: nmap
+    target: {{ website.name }}
+spec:
+  schedule: "{{ schedules.nmap }}"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 5
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      activeDeadlineSeconds: 900
+      template:
+        spec:
+          restartPolicy: OnFailure
+          serviceAccountName: audit-scanner
+          # Nmap nécessite NET_RAW pour certains scans
+          securityContext:
+            runAsUser: 0
+          containers:
+            - name: nmap-scanner
+              image: ghcr.io/{{ registry_org }}/audit-nmap:{{ image_tag }}
+              imagePullPolicy: Always
+              env:
+                - name: TARGET_URL
+                  value: "{{ website.url }}"
+                - name: TARGET_NAME
+                  value: "{{ website.name }}"
+                - name: TARGET_IP
+                  value: "{{ website.internal_ip | default('') }}"
+                - name: COLLECTOR_URL
+                  value: "http://collector:8080"
+              envFrom:
+                - secretRef:
+                    name: audit-secrets
+              resources:
+                requests:
+                  cpu: "100m"
+                  memory: "64Mi"
+                limits:
+                  cpu: "{{ resource_limits.nmap.cpu }}"
+                  memory: "{{ resource_limits.nmap.memory }}"
+              securityContext:
+                capabilities:
+                  add: ["NET_RAW", "NET_ADMIN"]

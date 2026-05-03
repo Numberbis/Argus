@@ -1,0 +1,48 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: testssl-{{ website.name }}
+  namespace: {{ k8s_namespace }}
+  labels:
+    app: security-audit
+    tool: testssl
+    target: {{ website.name }}
+spec:
+  schedule: "{{ schedules.testssl }}"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 5
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      activeDeadlineSeconds: 600
+      template:
+        spec:
+          restartPolicy: OnFailure
+          serviceAccountName: audit-scanner
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+          containers:
+            - name: testssl-scanner
+              image: ghcr.io/{{ registry_org }}/audit-testssl:{{ image_tag }}
+              imagePullPolicy: Always
+              env:
+                - name: TARGET_URL
+                  value: "{{ website.url }}"
+                - name: TARGET_NAME
+                  value: "{{ website.name }}"
+                - name: COLLECTOR_URL
+                  value: "http://collector:8080"
+              envFrom:
+                - secretRef:
+                    name: audit-secrets
+              resources:
+                requests:
+                  cpu: "50m"
+                  memory: "64Mi"
+                limits:
+                  cpu: "{{ resource_limits.testssl.cpu }}"
+                  memory: "{{ resource_limits.testssl.memory }}"
+              securityContext:
+                allowPrivilegeEscalation: false

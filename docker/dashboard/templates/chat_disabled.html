@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}Chat — Argus{% endblock %}
+{% block content %}
+<h1>Chat indisponible</h1>
+<div class="panel" style="border-left:4px solid #ca8a04;background:#fef3c7;">
+  <p>Le service Agent IA n'est pas configuré. Pour activer le chat, le triage automatique
+  et la remédiation :</p>
+  <ol>
+    <li>Choisissez un fournisseur LLM dans <code>.env</code> :
+      <pre>LLM_PROVIDER=anthropic   # ou openai, google, ollama
+ANTHROPIC_API_KEY=sk-ant-...
+LLM_DAILY_BUDGET_USD=2.00</pre>
+    </li>
+    <li>Démarrez le service agent : <code>make agent-up</code></li>
+    <li>Rafraîchissez cette page</li>
+  </ol>
+  <p class="small muted">Argus marche sans IA — vous gardez les scans, les rapports et les alertes.
+  L'IA ajoute le triage, le dédoublonnage et la remédiation automatique.</p>
+</div>
+{% endblock %}

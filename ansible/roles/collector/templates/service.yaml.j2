@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: collector
+  namespace: {{ k8s_namespace }}
+spec:
+  selector:
+    app: collector
+  ports:
+    - port: 8080
+      targetPort: 8080
+  type: ClusterIP

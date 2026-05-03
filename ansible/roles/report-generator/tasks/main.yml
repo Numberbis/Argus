@@ -1,0 +1,5 @@
+---
+- name: Déploiement CronJob générateur de rapports
+  kubernetes.core.k8s:
+    state: present
+    template: cronjob.yaml.j2

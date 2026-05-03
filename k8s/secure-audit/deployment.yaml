@@ -1,0 +1,100 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: secure-audit
+  namespace: audit
+  labels:
+    app: secure-audit
+spec:
+  replicas: 1
+  # NOTE : replicas: 1 obligatoire — les jobs d'audit sont stockés en mémoire.
+  # Pour du multi-réplicas, migrer vers Redis ou une base de données.
+  selector:
+    matchLabels:
+      app: secure-audit
+  template:
+    metadata:
+      labels:
+        app: secure-audit
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+
+      containers:
+        - name: secure-audit
+          image: secure-audit:latest
+          # En production, remplacer par l'image depuis votre registry :
+          # image: registry.example.com/secure-audit:1.0.0
+          imagePullPolicy: IfNotPresent
+
+          ports:
+            - containerPort: 5000
+              name: http
+
+          env:
+            - name: SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: secure-audit-secret
+                  key: SECRET_KEY
+            - name: INITIAL_USERS
+              valueFrom:
+                secretKeyRef:
+                  name: secure-audit-secret
+                  key: INITIAL_USERS
+            - name: USERS_FILE
+              value: "/app/data/users.json"
+            # Fallback si INITIAL_USERS et users.json sont tous les deux absents
+            - name: AUDIT_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: secure-audit-secret
+                  key: AUDIT_USERNAME
+            - name: AUDIT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: secure-audit-secret
+                  key: AUDIT_PASSWORD
+
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+
+          livenessProbe:
+            httpGet:
+              path: /login
+              port: 5000
+            initialDelaySeconds: 10
+            periodSeconds: 30
+            failureThreshold: 3
+
+          readinessProbe:
+            httpGet:
+              path: /login
+              port: 5000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+
+          volumeMounts:
+            - name: data
+              mountPath: /app/data
+
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+            capabilities:
+              drop:
+                - ALL
+
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: secure-audit-data

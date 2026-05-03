@@ -1,0 +1,49 @@
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: retirejs-yotalent
+  namespace: security-audit
+  labels:
+    app: security-audit
+    tool: retirejs
+    target: yotalent
+spec:
+  schedule: "0 5 * * 5"  # Vendredi 05h00
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 5
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      activeDeadlineSeconds: 600
+      template:
+        spec:
+          restartPolicy: OnFailure
+          serviceAccountName: audit-scanner
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+          containers:
+            - name: retirejs-scanner
+              image: ghcr.io/YOUR_ORG/audit-retirejs:YOUR_TAG
+              imagePullPolicy: Always
+              env:
+                - name: TARGET_URL
+                  value: "https://yotalent.example.com"
+                - name: TARGET_NAME
+                  value: "yotalent"
+                - name: COLLECTOR_URL
+                  value: "http://collector:8080"
+              resources:
+                requests:
+                  cpu: "100m"
+                  memory: "128Mi"
+                limits:
+                  cpu: "200m"
+                  memory: "256Mi"
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: false
+                capabilities:
+                  drop: ["ALL"]

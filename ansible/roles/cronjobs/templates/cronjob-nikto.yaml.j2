@@ -1,0 +1,49 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: nikto-{{ website.name }}
+  namespace: {{ k8s_namespace }}
+  labels:
+    app: security-audit
+    tool: nikto
+    target: {{ website.name }}
+spec:
+  schedule: "{{ schedules.nikto }}"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 5
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      activeDeadlineSeconds: 1800
+      template:
+        spec:
+          restartPolicy: OnFailure
+          serviceAccountName: audit-scanner
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+          containers:
+            - name: nikto-scanner
+              image: ghcr.io/{{ registry_org }}/audit-nikto:{{ image_tag }}
+              imagePullPolicy: Always
+              env:
+                - name: TARGET_URL
+                  value: "{{ website.url }}"
+                - name: TARGET_NAME
+                  value: "{{ website.name }}"
+                - name: COLLECTOR_URL
+                  value: "http://collector:8080"
+              envFrom:
+                - secretRef:
+                    name: audit-secrets
+              resources:
+                requests:
+                  cpu: "100m"
+                  memory: "128Mi"
+                limits:
+                  cpu: "{{ resource_limits.nikto.cpu }}"
+                  memory: "{{ resource_limits.nikto.memory }}"
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true

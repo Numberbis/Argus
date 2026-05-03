@@ -1,0 +1,37 @@
+---
+# Ingress NGINX avec TLS automatique via cert-manager (Let's Encrypt).
+# Remplacer audit.example.com par votre domaine réel.
+#
+# Prérequis :
+#   kubectl apply -f https://raw.githubusercontent.com/cert-manager/cert-manager/v1.14.0/deploy/static/00-crds.yaml
+#   helm install cert-manager jetstack/cert-manager --namespace cert-manager --create-namespace
+
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: secure-audit
+  namespace: audit
+  labels:
+    app: secure-audit
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "300"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "300"
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - audit.example.com
+      secretName: secure-audit-tls
+  rules:
+    - host: audit.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: secure-audit
+                port:
+                  name: http

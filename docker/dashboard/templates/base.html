@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Argus{% endblock %}</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+           margin: 0; background: #f4f6f9; color: #1a1f2e; }
+    nav { background: #1a1f2e; color: white; padding: 0 2em; display: flex; align-items: center; height: 56px; }
+    nav .brand { font-weight: 700; font-size: 1.1em; margin-right: 2em; letter-spacing: 0.5px; }
+    nav .brand .eye { color: #4fc3f7; }
+    nav a { color: #d0d7e2; text-decoration: none; margin-right: 1.5em; font-size: 0.95em; }
+    nav a:hover, nav a.active { color: white; }
+    nav .ai-tag { margin-left: auto; background: #4fc3f7; color: #1a1f2e; font-weight: 700;
+                  font-size: 0.7em; padding: 3px 8px; border-radius: 10px; letter-spacing: 0.5px; }
+    .container { max-width: 1280px; margin: 2em auto; padding: 0 1em; }
+    h1, h2 { color: #1a1f2e; }
+    h1 { margin-bottom: 0.3em; }
+    .subtitle { color: #6b7280; margin-top: 0; margin-bottom: 1.5em; }
+    table { width: 100%; border-collapse: collapse; background: white; border-radius: 8px;
+            overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+    th { background: #1a1f2e; color: white; padding: 12px 14px; text-align: left; font-weight: 600;
+         font-size: 0.85em; text-transform: uppercase; letter-spacing: 0.5px; }
+    td { padding: 12px 14px; border-bottom: 1px solid #eef0f4; vertical-align: top; }
+    tr:last-child td { border-bottom: none; }
+    tr:hover { background: #f8fafc; }
+    .badge { padding: 3px 9px; border-radius: 12px; font-size: 0.75em; font-weight: 700;
+             letter-spacing: 0.5px; display: inline-block; }
+    .badge-CRITICAL { background: #dc2626; color: white; }
+    .badge-HIGH     { background: #ea580c; color: white; }
+    .badge-MEDIUM   { background: #ca8a04; color: white; }
+    .badge-LOW      { background: #16a34a; color: white; }
+    .badge-INFO     { background: #94a3b8; color: white; }
+    .badge-AI       { background: #4fc3f7; color: #1a1f2e; }
+    .stat-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+                  gap: 1em; margin: 1em 0 2em; }
+    .card { background: white; padding: 1.2em; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+    .card .num { font-size: 2em; font-weight: 700; color: #1a1f2e; }
+    .card .lbl { color: #6b7280; font-size: 0.85em; text-transform: uppercase; letter-spacing: 0.5px; }
+    .card.danger .num { color: #dc2626; }
+    .card.warn .num { color: #ea580c; }
+    .card.ok .num { color: #16a34a; }
+    a { color: #2563eb; }
+    code { background: #eef0f4; padding: 1px 6px; border-radius: 4px; font-size: 0.9em; }
+    .muted { color: #6b7280; }
+    .small { font-size: 0.85em; }
+    button { background: #1a1f2e; color: white; border: 0; padding: 8px 14px; border-radius: 6px;
+             cursor: pointer; font-size: 0.9em; }
+    button:hover { background: #2a3142; }
+    button.ai { background: #4fc3f7; color: #1a1f2e; font-weight: 600; }
+    button.ai:hover { background: #29b6f6; }
+    .panel { background: white; border-radius: 8px; padding: 1.5em; margin-bottom: 1.5em;
+             box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+    .root-cause { border-left: 4px solid #dc2626; padding: 0.8em 1em; background: #fef2f2;
+                  border-radius: 4px; margin: 0.8em 0; }
+    .root-cause.HIGH    { border-left-color: #ea580c; background: #fff7ed; }
+    .root-cause.MEDIUM  { border-left-color: #ca8a04; background: #fefce8; }
+    .root-cause.LOW     { border-left-color: #16a34a; background: #f0fdf4; }
+    .root-cause.INFO    { border-left-color: #94a3b8; background: #f8fafc; }
+    pre { background: #1a1f2e; color: #e5e7eb; padding: 1em; border-radius: 6px;
+          overflow-x: auto; font-size: 0.85em; }
+    .ai-block { background: #f0f9ff; border: 1px solid #bae6fd; padding: 1em; border-radius: 6px;
+                margin-top: 0.8em; }
+    .ai-block h4 { margin-top: 0; color: #0369a1; }
+  </style>
+</head>
+<body>
+  <nav>
+    <span class="brand"><span class="eye">◉</span> Argus</span>
+    <a href="/">Dashboard</a>
+    <a href="/real-issues">Real Issues</a>
+    {% if agent_available %}<a href="/chat">Chat</a>{% endif %}
+    {% if agent_available %}<span class="ai-tag">AI ON</span>{% else %}<span class="ai-tag" style="background:#94a3b8">AI OFF</span>{% endif %}
+  </nav>
+  <div class="container">
+    {% block content %}{% endblock %}
+  </div>
+</body>
+</html>
